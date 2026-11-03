@@ -1,0 +1,849 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Prompting Techniques, Fast and Slow</title>
+<meta name="description" content="A 60-minute interactive class on prompting techniques and their mathematics, framed through Kahneman's System 1 and System 2.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧠</text></svg>">
+<link rel="stylesheet" href="assets/css/fonts.css">
+<link rel="stylesheet" href="assets/vendor/katex/katex.min.css">
+<link rel="stylesheet" href="assets/css/deck.css">
+<link rel="stylesheet" href="assets/css/class.css">
+</head>
+<body>
+
+<div class="hud" role="toolbar" aria-label="Presenter controls">
+  <button type="button" data-cmd="prev" aria-label="Previous slide">Prev</button>
+  <button type="button" data-cmd="next" aria-label="Next slide">Next</button>
+  <button type="button" data-cmd="goto">Slides</button>
+  <button type="button" data-cmd="notes">Notes</button>
+  <button type="button" data-cmd="theme">Theme</button>
+  <button type="button" data-cmd="help">Keys</button>
+</div>
+
+<main class="stage" id="stage" aria-live="polite">
+
+<!-- 1 ─────────────────────────────── TITLE -->
+<section class="slide title-slide" data-part="Opening" data-title="Title">
+  <p class="byline">Class lecture · 60 minutes<br><b>Parv Agarwal</b>, AI-NLP-ML Lab, IIT Patna</p>
+  <h1 class="tk" style="margin-top:40px">Prompting techniques, fast and slow</h1>
+  <p class="lede" style="margin-top:24px;max-width:56ch">Every major prompting technique, the mathematics behind it, and what Daniel Kahneman's two systems of thinking tell us about why each one works.</p>
+  <pre class="console"><span class="who">System 1 says</span>The ball costs 10 cents.<span class="caret" aria-hidden="true"></span></pre>
+  <aside class="notes">
+<p><b>[0:00–1:00]</b> Welcome. Today is only about techniques: what you type, why it changes the output, and the maths that explains it. Our guide is Kahneman's <i>Thinking, Fast and Slow</i>. His idea of two systems, one fast and intuitive, one slow and deliberate, turns out to be the clearest map of prompting I know.</p>
+<p>The line on screen is the most famous wrong answer in psychology. We'll meet it in a minute.</p>
+  </aside>
+</section>
+
+<!-- 2 ─────────────────────────────── MAP -->
+<section class="slide" data-part="Opening" data-title="Today's map">
+  <h2 class="tk">Today's map</h2>
+  <div class="cols w60">
+    <table class="grid">
+      <tr><th>Part</th><th>Techniques</th><th>Kahneman lens</th></tr>
+      <tr><td>0. Foundations</td><td>Conditioning, decoding</td><td>Two systems</td></tr>
+      <tr><td>1. Fast prompts</td><td>Zero-shot, few-shot, calibration, framing, roles</td><td>Anchoring, framing, priming</td></tr>
+      <tr><td>2. Slow prompts</td><td>CoT, self-consistency, decomposition, ToT, PAL, critique, reasoning models</td><td>Effort, independence, WYSIATI</td></tr>
+      <tr><td>3. Bias as bugs</td><td>Base rates, structure, retrieval</td><td>Base-rate neglect, conjunction, availability</td></tr>
+      <tr><td>4. Wrap-up</td><td>Auto-prompting, cheat sheet, quiz</td><td>—</td></tr>
+    </table>
+    <div class="stack">
+      <p class="small">Nine slides are interactive. Keep a pen ready: some questions you answer on paper <em>before</em> we reveal anything.</p>
+      <p class="small muted">Keys: arrows to move, N for notes, G to jump, T for theme.</p>
+      <p class="small muted">Handout: <code>notes.html</code> has every derivation. Lab: <code>lab/prompting_lab.py</code>.</p>
+    </div>
+  </div>
+  <aside class="notes">
+<p><b>[1:00–2:00]</b> Five parts. Foundations first, then techniques that work in one fast pass, then techniques that make the model slow down, then classic human biases that show up as prompting bugs, then a quiz. The handout has all derivations, so don't copy equations; follow the ideas.</p>
+  </aside>
+</section>
+
+<!-- 3 ─────────────────────────────── BAT AND BALL -->
+<section class="slide" data-part="0. Foundations" data-title="Warm-up: the bat and the ball">
+  <h2 class="tk">Warm-up: answer in five seconds</h2>
+  <div class="cols">
+    <div class="stack">
+      <p class="kq">A bat and a ball cost <b>$1.10</b> in total. The bat costs <b>$1.00 more</b> than the ball. How much does the ball cost?</p>
+      <p class="cite">Cognitive Reflection Test item (Frederick, 2005), discussed in Kahneman (2011), ch. 3.</p>
+      <div class="row">
+        <input type="text" id="bb-in" placeholder="cents" style="width:200px" aria-label="Your answer in cents">
+        <button class="btn" id="bb-check" type="button">Check</button>
+        <button class="btn quiet" id="bb-show" type="button">Show the algebra</button>
+      </div>
+      <div class="verdict" id="bb-verdict" aria-live="polite"></div>
+    </div>
+    <div class="reveal" id="bb-reveal">
+      <div class="eq">\[ b + (b + 1.00) = 1.10 \;\Rightarrow\; 2b = 0.10 \;\Rightarrow\; b = 0.05 \]</div>
+      <p class="small">More than half of students at several elite universities gave 10 cents, the answer that <em>feels</em> right. Kahneman's point: System 1 offers an answer instantly, and System 2 is too lazy to check it.</p>
+      <p class="small"><b>For language models:</b> one forward pass per token is the model's System 1. The fluent continuation wins unless the prompt makes it check.</p>
+    </div>
+  </div>
+  <aside class="notes">
+<p><b>[2:00–5:00]</b> Read the question aloud. Give them five seconds, then ask for a show of hands: who got 10 cents? Type a couple of answers into the box. Then show the algebra.</p>
+<p>Key line: the wrong answer is not random; it is the most <i>available</i> one. A language model decoding greedily behaves the same way: it emits the highest-probability next token, and "10" is a very probable token after "costs $0.". Everything in Part 2 is about buying the model a moment to check.</p>
+  </aside>
+</section>
+
+<!-- 4 ─────────────────────────────── TWO SYSTEMS -->
+<section class="slide" data-part="0. Foundations" data-title="Two systems, two kinds of prompting">
+  <h2 class="tk">Two systems, two kinds of prompting</h2>
+  <div class="cols">
+    <div class="stack">
+      <h3><span class="sys s1">System 1</span> fast, automatic</h3>
+      <p class="small">Human: reading a face, 2 + 2, completing "bread and …".</p>
+      <p class="small">Model: one forward pass per output token. Fixed work per token: about \(2P\) FLOPs for \(P\) parameters, and a fixed serial depth \(L\) (the number of layers).</p>
+      <h3 style="margin-top:16px"><span class="sys s2">System 2</span> slow, effortful</h3>
+      <p class="small">Human: 17 × 24, filling a tax form, checking an argument.</p>
+      <p class="small">Model: generating intermediate tokens. Each written token is fed back in, so \(T\) reasoning tokens give \(T \cdot L\) serial steps and a scratchpad to remember them.</p>
+    </div>
+    <div class="stack">
+      <div class="eq" style="font-size:30px">\[ \text{System 1: } \;\text{compute} \approx 2P \cdot |y| \]</div>
+      <div class="eq" style="font-size:30px">\[ \text{System 2: } \;\text{compute} \approx 2P \,\big(|r| + |y|\big) \]</div>
+      <p class="eq-caption">Thinking tokens \(r\) are the only knob that changes how much computation a frozen model spends on a question.</p>
+      <p class="small"><b>The thesis of today's class:</b> fast prompts change <em>which</em> distribution the model samples from; slow prompts change <em>how much computation</em> it does before answering.</p>
+      <p class="cite">Kahneman (2011), ch. 1–2. Serial-depth argument: Merrill &amp; Sabharwal (ICLR 2024); Feng et al. (NeurIPS 2023).</p>
+    </div>
+  </div>
+  <aside class="notes">
+<p><b>[5:00–8:00]</b> Kahneman's System 1 is automatic and effortless; System 2 allocates attention to effortful work. The analogy to transformers is surprisingly precise. For every token, the model runs the same fixed stack of layers: same FLOPs, same depth. It cannot "think harder" about a hard token. The only way to give it more computation is to make it write more tokens, because each written token becomes input for the next step.</p>
+<p>Theory backs this: Merrill and Sabharwal show transformers with a chain of thought can solve problems that fixed-depth transformers provably cannot, and the power grows with the number of intermediate steps. Remember the thesis line on the right; we'll test every technique against it.</p>
+  </aside>
+</section>
+
+<!-- 5 ─────────────────────────────── THE ONE EQUATION -->
+<section class="slide" data-part="0. Foundations" data-title="The one equation">
+  <h2 class="tk">The one equation behind every technique</h2>
+  <div class="cols">
+    <div class="stack">
+      <p>A frozen model defines a conditional distribution. A prompt \(x\) is the condition.</p>
+      <div class="eq">\[ p_\theta(y \mid x) = \prod_{t=1}^{|y|} p_\theta\big(y_t \mid x,\, y_{\lt t}\big) \]</div>
+      <p>Prompt engineering searches over inputs, never over weights:</p>
+      <div class="eq">\[ x^{\ast} = \arg\max_{x}\; \mathbb{E}_{(q,a)\sim\mathcal{D}}\Big[\, m\big(\operatorname{decode}\, p_\theta(\cdot \mid x \oplus q),\; a\big) \Big] \]</div>
+      <p class="eq-caption">\(\oplus\) concatenation, \(m\) a metric such as exact match, \(\mathcal{D}\) the task distribution.</p>
+    </div>
+    <div class="stack">
+      <h3>Where each technique acts</h3>
+      <table class="grid tight">
+        <tr><td>Instructions, roles, format</td><td>change \(x\)</td></tr>
+        <tr><td>Few-shot examples</td><td>change \(x\) to imply a task</td></tr>
+        <tr><td>Chain-of-thought</td><td>insert latent \(r\) between \(x\) and \(a\)</td></tr>
+        <tr><td>Self-consistency</td><td>change <code>decode</code>: sample, then vote</td></tr>
+        <tr><td>Tree of Thoughts</td><td>change <code>decode</code>: search</td></tr>
+        <tr><td>PAL, RAG, tools</td><td>add an external function to the loop</td></tr>
+        <tr><td>APE, OPRO, DSPy</td><td>solve the \(\arg\max\) automatically</td></tr>
+      </table>
+    </div>
+  </div>
+  <aside class="notes">
+<p><b>[8:00–10:00]</b> The chain rule of probability: the model writes one token at a time, each conditioned on the prompt and everything written so far. Prompt engineering is the argmax on the left: we search for the input string that maximises expected task performance. The table on the right is the whole lecture in one view; every technique edits one part of this equation. Point at each row as a preview.</p>
+  </aside>
+</section>
+
+<!-- 6 ─────────────────────────────── DECODING -->
+<section class="slide" data-part="0. Foundations" data-title="Decoding: the model's first impression">
+  <h2 class="tk">Decoding: the model's first impression</h2>
+  <div class="cols w40">
+    <div class="stack">
+      <div class="eq">\[ p_i(T) = \frac{\exp(z_i / T)}{\sum_j \exp(z_j / T)} \]</div>
+      <p class="small">\(T \to 0\): greedy, always the top token. \(T = 1\): the model's own distribution. \(T \to \infty\): uniform.</p>
+      <p class="small"><b>Top-p:</b> keep the smallest set of tokens whose probability sums to at least \(p\), renormalise, sample.</p>
+      <p class="small">Prompt: "…How much does the ball cost? The ball costs $" — next-token logits are illustrative.</p>
+    </div>
+    <div class="panel">
+      <h3>Sample the next token</h3>
+      <label class="ctl">Temperature <input type="range" id="t-T" min="0.05" max="2" step="0.05" value="1"><output id="t-Tv"></output></label>
+      <label class="ctl">Top-p <input type="range" id="t-P" min="0.3" max="1" step="0.01" value="1"><output id="t-Pv"></output></label>
+      <div class="bars" id="t-bars"></div>
+      <div class="row" style="margin-top:14px"><button class="btn" id="t-sample" type="button">Sample a token</button><span id="t-pick" class="stat" style="font-size:20px"></span></div>
+      <p class="tag" id="t-H" style="margin-top:8px"></p>
+    </div>
+  </div>
+  <aside class="notes">
+<p><b>[10:00–12:00]</b> Set temperature to 0.05: the model always says 10 cents. That is System 1 with no noise. Raise temperature to 1 and sample a few times: sometimes 5 cents appears. This matters later: self-consistency needs <i>diverse</i> samples, so it uses temperature around 0.5–0.8, not 0. Ask: why would top-p 0.6 never produce 5 cents here? Because the top token alone already holds most of the mass at low temperature.</p>
+  </aside>
+</section>
+
+<!-- 7 ─────────────────────────────── ZERO-SHOT -->
+<section class="slide" data-part="1. Fast prompts" data-title="Zero-shot: specify, don't hint">
+  <p class="part-label">Part 1 · Fast prompts <span class="sys s1">System 1</span></p>
+  <h2 class="tk">Zero-shot: specify, don't hint</h2>
+  <div class="cols">
+    <pre class="console"><span class="who">Prompt</span><span class="hl">Role:</span> You review loan applications.
+<span class="hl">Task:</span> Classify the email as COMPLAINT,
+  QUERY or OTHER.
+<span class="hl">Context:</span> Customers write in Hinglish too.
+<span class="hl">Constraints:</span> If unsure, choose OTHER.
+<span class="hl">Format:</span> Reply with one word only.
+
+Email: "loan ka status kya hai? 3 din ho gaye"</pre>
+    <div class="stack">
+      <p class="small">Instruction-tuned models map instructions directly to behaviour. Each component removes a degree of freedom the model would otherwise guess.</p>
+      <div class="eq" style="font-size:28px">\[ H\big(Y \mid x_{\text{full}}\big) \;\le\; H\big(Y \mid x_{\text{short}}\big) \]</div>
+      <p class="eq-caption">On average, conditioning on more relevant information cannot increase uncertainty. Specificity narrows the output distribution.</p>
+      <p class="small"><b>Kahneman link:</b> System 1 fills gaps with whatever comes to mind first. An under-specified prompt invites the model to do the same.</p>
+    </div>
+  </div>
+  <aside class="notes">
+<p><b>[12:00–14:00]</b> Walk the five labels. The maths point: conditional entropy. Adding relevant conditions to the prompt can only narrow the distribution of outputs on average. Vague prompts leave many plausible continuations; the model picks the most typical one, which is rarely the one you meant. Note the caveat "on average": a single misleading detail can still hurt a particular case.</p>
+  </aside>
+</section>
+
+<!-- 8 ─────────────────────────────── FEW-SHOT -->
+<section class="slide" data-part="1. Fast prompts" data-title="Few-shot: show, don't tell">
+  <h2 class="tk">Few-shot: show, don't tell</h2>
+  <div class="cols">
+    <div class="stack">
+      <pre class="console"><span class="who">Prompt (k = 3 demonstrations)</span>Review: "Battery died in a day." → negative
+Review: "Crisp screen, fair price." → positive
+Review: "Box was dented, phone fine." → positive
+Review: "Stopped charging after a week." →</pre>
+      <p class="small">GPT-3 showed that a large model can learn a task from a few examples in its context, with no gradient update (Brown et al., 2020).</p>
+    </div>
+    <div class="stack">
+      <h3>What do the examples actually teach?</h3>
+      <p class="small">Min et al. (2022) replaced the labels in demonstrations with <em>random</em> labels. Accuracy dropped only a little on many classification tasks.</p>
+      <p class="small">So demonstrations mostly specify the <b>label space</b>, the <b>input distribution</b> and the <b>format</b>, more than the input–label mapping itself.</p>
+      <p class="small"><b>Practice:</b> 3–8 diverse examples, balanced across labels, in random order, in exactly the output format you want.</p>
+      <p class="cite">Brown et al. (NeurIPS 2020); Min et al. (EMNLP 2022).</p>
+    </div>
+  </div>
+  <aside class="notes">
+<p><b>[14:00–16:00]</b> Few-shot is the most powerful fast technique. The surprising Min et al. result tells us what the examples are doing: they tell the model which task, which labels, which format. The next slide gives the cleanest mathematical explanation of why that works.</p>
+  </aside>
+</section>
+
+<!-- 9 ─────────────────────────────── NUMBER GAME -->
+<section class="slide" data-part="1. Fast prompts" data-title="Few-shot as Bayesian inference">
+  <h2 class="tk">Few-shot as Bayesian inference: the number game</h2>
+  <div class="cols w40">
+    <div class="stack">
+      <div class="eq" style="font-size:28px">\[ p(y \mid x, S) = \sum_{h} p(y \mid x, h)\, p(h \mid S) \]</div>
+      <div class="eq" style="font-size:28px">\[ p(h \mid S) \propto p(h) \prod_{i=1}^{k} \frac{\mathbb{1}[s_i \in h]}{|h|} \]</div>
+      <p class="small">The model infers a hidden task \(h\) from demonstrations \(S\) (Xie et al., ICLR 2022). The \(1/|h|\) term is the <b>size principle</b>: specific concepts that fit win fast (Tenenbaum, 1999).</p>
+      <p class="small">Click numbers to add examples. Shading = predicted probability that a number belongs to the concept.</p>
+    </div>
+    <div class="panel">
+      <div class="seg" id="ng-presets" style="margin-bottom:12px">
+        <button type="button" data-v="16" aria-pressed="true">16</button>
+        <button type="button" data-v="16,8,2,64" aria-pressed="false">16, 8, 2, 64</button>
+        <button type="button" data-v="16,23,19,20" aria-pressed="false">16, 23, 19, 20</button>
+        <button type="button" data-v="60,80,10,30" aria-pressed="false">60, 80, 10, 30</button>
+        <button type="button" data-v="81,25,4,36" aria-pressed="false">81, 25, 4, 36</button>
+      </div>
+      <div class="ng-grid" id="ng-grid"></div>
+      <p class="tag" style="margin:10px 0 6px">Examples: <span id="ng-d"></span> · Top hypotheses p(h | S):</p>
+      <div class="bars compact" id="ng-bars"></div>
+    </div>
+  </div>
+  <aside class="notes">
+<p><b>[16:00–19:00]</b> Start with just 16: the posterior is spread over "even", "powers of 2", "squares", ranges. Add 8, 2, 64: powers of 2 jumps to near certainty, because under "even numbers" each example has likelihood 1/50 while under "powers of 2" it has 1/7. With four examples the ratio is (50/7)^4, about 2,600 to 1. That is the size principle. Now try 16, 23, 19, 20: a range wins. Ask the class to predict before clicking.</p>
+<p>The lesson for prompting: demonstrations are evidence about which task you want. Few, well-chosen, <i>diverse</i> examples identify the task faster than many similar ones.</p>
+  </aside>
+</section>
+
+<!-- 10 ─────────────────────────────── ANCHORING LIVE -->
+<section class="slide" data-part="1. Fast prompts" data-title="Live experiment: anchoring">
+  <h2 class="tk">Live experiment: anchoring</h2>
+  <div class="cols">
+    <div class="stack">
+      <p class="small">Odd roll numbers: Group A. Even: Group B. Write your answers on paper.</p>
+      <div class="seg" id="an-group"><button type="button" data-v="A" aria-pressed="false">Show Group A</button><button type="button" data-v="B" aria-pressed="false">Show Group B</button></div>
+      <pre class="console" id="an-q" style="min-height:190px">Close your eyes, Group B. Then switch.</pre>
+      <p class="cite">Tversky &amp; Kahneman (Science, 1974): a rigged wheel showed 10 or 65; median estimates were 25 and 45. Kahneman (2011), ch. 11.</p>
+    </div>
+    <div class="panel">
+      <h3>Class results</h3>
+      <label class="tag">Group A estimates (anchor 10)</label>
+      <textarea id="an-a" rows="2" placeholder="e.g. 20, 25, 18"></textarea>
+      <label class="tag" style="margin-top:8px;display:block">Group B estimates (anchor 65)</label>
+      <textarea id="an-b" rows="2" placeholder="e.g. 45, 40, 50"></textarea>
+      <div class="row" style="margin-top:10px"><button class="btn" id="an-run" type="button">Analyse</button><button class="btn quiet" id="an-demo" type="button">Demo data</button></div>
+      <p class="small" id="an-out" style="margin-top:12px;font-size:19px"></p>
+      <p class="tag">True value: 54 of 193 UN members, about 28%.</p>
+    </div>
+  </div>
+  <aside class="notes">
+<p><b>[19:00–22:00]</b> Group B closes eyes while you show A, then swap. Collect 8–10 numbers from each group quickly by calling out. Type them in and press Analyse. The permutation test asks: if the anchor had no effect, how often would random relabelling produce a gap this big? Explain p-value in one line. If the class is small and the effect is weak, that is fine; the 1974 result is the reference.</p>
+<p>A completely irrelevant number moved everyone's estimate. Next slide: language models do the same with numbers and labels in the prompt.</p>
+  </aside>
+</section>
+
+<!-- 11 ─────────────────────────────── ANCHORING IN PROMPTS -->
+<section class="slide" data-part="1. Fast prompts" data-title="Anchors inside prompts, and calibration">
+  <h2 class="tk">Anchors inside prompts, and how to remove them</h2>
+  <div class="cols">
+    <div class="stack">
+      <p class="small"><b>Majority-label bias:</b> the model favours labels frequent in the demonstrations. <b>Recency bias:</b> it favours the label of the last example. <b>Common-token bias:</b> it favours frequent words (Zhao et al., 2021).</p>
+      <p class="small">Jones &amp; Steinhardt (2022) adapted anchoring and framing tests from psychology and found matching failures in code-generating models.</p>
+      <h3 style="margin-top:8px">Contextual calibration</h3>
+      <p class="small">Feed a content-free input such as "N/A" to measure the prompt's built-in bias \(\hat p_{\text{cf}}\), then divide it out:</p>
+      <div class="eq" style="font-size:28px">\[ W = \operatorname{diag}(\hat p_{\text{cf}})^{-1},\qquad \hat q = \operatorname{softmax}\big(W\,\hat p(y\mid x)\big) \]</div>
+    </div>
+    <div class="stack">
+      <pre class="console"><span class="who">Worked example</span>p(y | "N/A")      = [0.70 pos, 0.30 neg]
+p(y | real input) = [0.60 pos, 0.40 neg]
+
+W·p = [0.60/0.70, 0.40/0.30]
+    = [0.857, 1.333]
+→ normalised = [0.39 pos, <span class="hl">0.61 neg</span>]</pre>
+      <p class="small">Raw output says positive; once the prompt's own lean is removed, the evidence says negative.</p>
+      <p class="small"><b>Practice:</b> balance labels, shuffle order, and calibrate when you read label probabilities.</p>
+      <p class="cite">Zhao et al. (ICML 2021); Jones &amp; Steinhardt (NeurIPS 2022).</p>
+    </div>
+  </div>
+  <aside class="notes">
+<p><b>[22:00–24:00]</b> The prompt itself is an anchor. If four of five demonstrations say positive, the model leans positive. Calibration is simple Bayes: measure what the model says when there is nothing to read, treat it as the prior, divide it out. Work the numbers on the right: 0.60 over 0.70 and 0.40 over 0.30, normalise, the decision flips. The full derivation is in the handout.</p>
+  </aside>
+</section>
+
+<!-- 12 ─────────────────────────────── FRAMING -->
+<section class="slide" data-part="1. Fast prompts" data-title="Framing and format sensitivity">
+  <h2 class="tk">Framing: same facts, different answers</h2>
+  <div class="cols">
+    <div class="stack">
+      <p class="small">Tversky &amp; Kahneman (1981): 600 people face a disease. With outcomes framed as lives <b>saved</b>, 72% chose the sure option. With the same outcomes framed as deaths, 78% chose the gamble.</p>
+      <p class="small">Models have a sharper version: <b>format</b> sensitivity. Changing separators, casing or spacing in a few-shot prompt moved LLaMA-2-13B accuracy by up to 76 points on one task (Sclar et al., ICLR 2024).</p>
+      <p class="small"><b>Practice:</b> never report one prompt. Evaluate several equivalent framings and report the spread.</p>
+    </div>
+    <div class="stack">
+      <h3>Prompt ensembling removes framing noise</h3>
+      <div class="eq" style="font-size:30px">\[ \bar p(y \mid q) = \frac{1}{K}\sum_{k=1}^{K} p_\theta(y \mid x_k \oplus q) \]</div>
+      <p class="small">If each framing has error \(\varepsilon_k\) with variance \(\sigma^2\) and pairwise correlation \(\rho\):</p>
+      <div class="eq" style="font-size:30px">\[ \operatorname{Var}\Big(\tfrac{1}{K}\sum_k \varepsilon_k\Big) = \sigma^2\Big(\rho + \frac{1-\rho}{K}\Big) \]</div>
+      <p class="eq-caption">Averaging removes the independent part of framing noise, never the shared part \(\rho\sigma^2\). Keep this formula: it returns for self-consistency.</p>
+    </div>
+  </div>
+  <aside class="notes">
+<p><b>[24:00–26:00]</b> The framing study: identical expected outcomes, opposite majority choices. For models, even meaningless formatting acts as a frame. The variance formula is the most reused formula in today's class; derive it on the board if time allows (handout section 4). With K framings, independent noise shrinks by 1/K, but correlated noise rho stays.</p>
+  </aside>
+</section>
+
+<!-- 13 ─────────────────────────────── PERSONAS / PRIMING -->
+<section class="slide" data-part="1. Fast prompts" data-title="Roles and priming: honest evidence">
+  <h2 class="tk">Roles and priming: what the evidence really says</h2>
+  <div class="cols">
+    <div class="stack">
+      <h3>Priming in humans</h3>
+      <p class="small">Kahneman devoted a chapter to priming studies. Many failed to replicate, and he later wrote publicly that he had placed too much faith in small, underpowered studies.</p>
+      <h3 style="margin-top:8px">Personas in models</h3>
+      <p class="small">A systematic test of 162 roles in system prompts found that adding a persona did <b>not</b> reliably improve accuracy on factual questions compared with no persona (Zheng et al., Findings of EMNLP 2024).</p>
+    </div>
+    <div class="stack">
+      <pre class="console"><span class="who">Weak: a role adds no information</span>You are a genius mathematician. Solve: …</pre>
+      <pre class="console"><span class="who">Useful: a role that carries constraints</span>You are reviewing a junior's proof for a
+first-year course. Point out each step that
+does not follow, quote it, and say why.
+Do not rewrite the proof.</pre>
+      <p class="small"><b>Rule:</b> a role helps when it imports audience, standards, format and constraints. It does not add intelligence.</p>
+    </div>
+  </div>
+  <aside class="notes">
+<p><b>[26:00–27:00]</b> Keep this brief and honest. Kahneman himself is the best model of intellectual honesty here: when priming results failed to replicate, he said so. Same with personas: "you are an expert" is folklore. The useful part of a role is the specification it carries.</p>
+  </aside>
+</section>
+
+<!-- 14 ─────────────────────────────── COT -->
+<section class="slide" data-part="2. Slow prompts" data-title="Chain-of-thought">
+  <p class="part-label">Part 2 · Slow prompts <span class="sys s2">System 2</span></p>
+  <h2 class="tk" style="margin-bottom:20px">Chain-of-thought: write the reasoning down</h2>
+  <div class="cols">
+    <div class="stack">
+      <div class="eq">\[ p(a \mid q) = \sum_{r} p_\theta(r \mid q)\; p_\theta(a \mid q, r) \]</div>
+      <p class="small">The rationale \(r\) is a latent variable. Generating it first lets the answer condition on intermediate results the model could not compute in one pass.</p>
+      <div class="fact"><div class="n"><span class="from">17.9 →</span> 56.9%</div><p>GSM8K, PaLM 540B, few-shot CoT vs standard prompting (Wei et al., NeurIPS 2022).</p></div>
+      <div class="fact" style="padding-top:10px"><div class="n"><span class="from">17.7 →</span> 78.7%</div><p>MultiArith, zero-shot, adding "Let's think step by step" (Kojima et al., NeurIPS 2022).</p></div>
+    </div>
+    <div class="stack">
+      <pre class="console"><span class="who">Zero-shot CoT</span>Q: A juggler has 16 balls. Half are golf
+balls, half of those are blue. How many
+blue golf balls?
+A: <span class="hl">Let's think step by step.</span></pre>
+      <pre class="console out"><span class="who">Output</span>16 balls, half are golf balls → 8.
+Half of 8 are blue → 4.
+The answer is 4.</pre>
+      <p class="small"><b>Kahneman link:</b> System 2 needs working memory. The context window is the model's working memory; CoT puts the intermediate results there.</p>
+    </div>
+  </div>
+  <aside class="notes">
+<p><b>[27:00–29:00]</b> The equation: the answer probability marginalises over possible reasoning paths. Without CoT, the model must jump straight from q to a in one pass per token. Two famous numbers: Wei et al. with exemplars, Kojima et al. with five words. One caveat to state: in Wei et al. the gains appeared mainly in very large models; small models wrote fluent but wrong chains.</p>
+  </aside>
+</section>
+
+<!-- 15 ─────────────────────────────── WHY TOKENS = COMPUTE -->
+<section class="slide" data-part="2. Slow prompts" data-title="Why thinking tokens help">
+  <h2 class="tk">Why thinking tokens help: effort is serial</h2>
+  <div class="cols">
+    <div class="stack">
+      <p class="kq">Kahneman opens with <b>17 × 24</b>. You know you can do it, but it takes deliberate, step-by-step effort and your pupils dilate while you do.</p>
+      <div class="row"><input type="text" id="mul-in" placeholder="17 × 24 = ?" style="width:220px" aria-label="17 times 24"><button class="btn" id="mul-go" type="button">Check</button></div>
+      <div class="verdict" id="mul-v" aria-live="polite"></div>
+      <p class="small">Multiplying multi-digit numbers needs carries that depend on earlier carries: a <b>serial</b> computation. A transformer has fixed depth \(L\) per token, so it cannot do arbitrarily long serial work in a single token.</p>
+    </div>
+    <div class="stack">
+      <table class="grid tight">
+        <tr><th>Setting</th><th>Serial steps available</th></tr>
+        <tr><td>Answer immediately</td><td>\(L\) per token</td></tr>
+        <tr><td>With \(T\) reasoning tokens</td><td>\(\approx T \cdot L\)</td></tr>
+      </table>
+      <p class="small">Theory: constant-depth transformers without intermediate steps sit in a weak circuit class; with a polynomial number of CoT steps they can simulate any polynomial-time computation (Merrill &amp; Sabharwal, ICLR 2024). Feng et al. (NeurIPS 2023) give the arithmetic case.</p>
+      <p class="small"><b>Corollary:</b> "think step by step" helps tasks with serial structure (arithmetic, logic, multi-hop) and does little for pure recall ("capital of Peru").</p>
+    </div>
+  </div>
+  <aside class="notes">
+<p><b>[29:00–31:00]</b> Ask everyone to compute 17 × 24 in their heads and type it; the widget times them. That felt like effort. Now the model: each token gets the same fixed depth. Long serial dependencies like carries cannot fit in one token's computation, but they fit across many tokens. That is the theoretical reason CoT helps arithmetic and doesn't help factual recall.</p>
+  </aside>
+</section>
+
+<!-- 16 ─────────────────────────────── PLAYGROUND -->
+<section class="slide" data-part="2. Slow prompts" data-title="Technique playground">
+  <h2 class="tk">One question, eight techniques</h2>
+  <div class="seg" id="tp-seg" style="margin-bottom:18px">
+    <button type="button" data-v="direct" aria-pressed="true">Direct</button>
+    <button type="button" data-v="role" aria-pressed="false">Role prompt</button>
+    <button type="button" data-v="zcot" aria-pressed="false">Zero-shot CoT</button>
+    <button type="button" data-v="fcot" aria-pressed="false">Few-shot CoT</button>
+    <button type="button" data-v="l2m" aria-pressed="false">Least-to-most</button>
+    <button type="button" data-v="sc" aria-pressed="false">Self-consistency</button>
+    <button type="button" data-v="pal" aria-pressed="false">Program-aided</button>
+    <button type="button" data-v="crit" aria-pressed="false">Verify &amp; revise</button>
+  </div>
+  <div class="cols">
+    <pre class="console" id="tp-p" style="min-height:300px"></pre>
+    <div class="stack">
+      <pre class="console out" id="tp-o" style="min-height:190px"></pre>
+      <p class="small" id="tp-n"></p>
+      <p class="tag">Outputs are illustrative, written to show typical behaviour. Run the real thing in the lab file.</p>
+    </div>
+  </div>
+  <aside class="notes">
+<p><b>[31:00–34:00]</b> Same CRT-style question in rupees: answer ₹5. Click through each technique and ask the class to predict the output before revealing. Point out the cost line under each: self-consistency costs 5 calls; PAL needs an interpreter. The role prompt still says ₹10: a persona adds no computation. "Verify &amp; revise" works only because substituting the answer back is a real check.</p>
+  </aside>
+</section>
+
+<!-- 17 ─────────────────────────────── SELF-CONSISTENCY MATH -->
+<section class="slide" data-part="2. Slow prompts" data-title="Self-consistency">
+  <h2 class="tk">Self-consistency: many thoughts, one vote</h2>
+  <div class="cols">
+    <div class="stack">
+      <p class="small">Greedy CoT takes one path \(r\). The quantity we want sums over all paths. Sampling \(N\) paths and voting is a Monte Carlo estimate of it:</p>
+      <div class="eq" style="font-size:30px">\[ \hat a = \arg\max_{a} \sum_{i=1}^{N} \mathbb{1}[a_i = a] \;\xrightarrow{N\to\infty}\; \arg\max_a \sum_r p(r,a\mid q) \]</div>
+      <p class="small">Binary case, each sample correct with probability \(p\gt\tfrac12\), independent:</p>
+      <div class="eq" style="font-size:30px">\[ P(\text{vote wrong}) \le \exp\!\big(-2N(p-\tfrac12)^2\big) \]</div>
+      <p class="eq-caption">Hoeffding's inequality: error falls exponentially in \(N\) (Condorcet's jury theorem). If \(p\lt\tfrac12\), voting makes things worse.</p>
+    </div>
+    <div class="stack">
+      <div class="fact"><div class="n"><span class="from">56.5 →</span> 74.4%</div><p>GSM8K, PaLM 540B: CoT vs self-consistency with 40 sampled paths (Wang et al., ICLR 2023).</p></div>
+      <p class="small"><b>Why it works better than the binary bound suggests:</b> wrong answers usually <em>scatter</em> (₹10, ₹15, ₹4.5…) while right answers agree. A plurality can win with far less than 50%.</p>
+      <p class="small"><b>Cost:</b> \(N\) times the tokens. Gains usually flatten after 10–20 samples.</p>
+    </div>
+  </div>
+  <aside class="notes">
+<p><b>[34:00–36:00]</b> Self-consistency is the cleanest System 2 trick: sample at temperature around 0.7, extract each final answer, take the majority. Mathematically it approximates marginalising over reasoning paths. Hoeffding gives exponential decay of error when each path is better than chance. Important warning: when the model is usually wrong, voting amplifies the wrong answer. Derivation in handout section 6.</p>
+  </aside>
+</section>
+
+<!-- 18 ─────────────────────────────── INDEPENDENCE -->
+<section class="slide" data-part="2. Slow prompts" data-title="Independence: decorrelate the errors">
+  <h2 class="tk">Kahneman's rule: keep the judges independent</h2>
+  <div class="cols w40">
+    <div class="stack">
+      <p class="small">Kahneman advises that before a meeting discusses an issue, each person should write a short summary of their own view. Otherwise the first speaker anchors everyone and the group's errors become correlated.</p>
+      <p class="small">Same for samples. Model: with probability \(\rho\) all \(N\) samples copy one shared draw; otherwise they are independent.</p>
+      <div class="eq" style="font-size:28px">\[ \text{Acc}_\rho(N) = \rho\,p + (1-\rho)\,\text{Acc}_0(N) \]</div>
+      <p class="small"><b>Decorrelating prompts:</b> vary the exemplars, their order, the phrasing, or even the model, so the samples fail in different ways.</p>
+    </div>
+    <div class="panel" style="padding:24px 28px">
+      <label class="ctl">Path accuracy p <input type="range" id="sc-p" min="0.2" max="0.9" step="0.01" value="0.45"><output id="sc-pv"></output></label>
+      <label class="ctl">Samples N <input type="range" id="sc-n" min="1" max="41" step="2" value="9"><output id="sc-nv"></output></label>
+      <label class="ctl">Correlation ρ <input type="range" id="sc-r" min="0" max="1" step="0.05" value="0.4"><output id="sc-rv"></output></label>
+      <label class="ctl">Wrong answers <input type="range" id="sc-m" min="1" max="8" step="1" value="4"><output id="sc-mv"></output></label>
+      <div class="bars compact" id="sc-bars"></div>
+      <svg class="chart" id="sc-chart" viewBox="0 0 520 170" role="img" aria-label="Accuracy versus number of samples"></svg>
+      <p class="legend" style="margin-top:4px"><span>Accuracy vs N:</span><span><i style="background:var(--attn)"></i>errors agree</span><span><i style="background:var(--heat)"></i>errors scatter</span><span><i style="background:var(--muted)"></i>scatter + correlation</span></p>
+    </div>
+  </div>
+  <aside class="notes">
+<p><b>[36:00–38:00]</b> Demo: set p = 0.45 (the model is right less than half the time). With errors that agree, voting makes things worse. With errors that scatter over four wrong answers, voting still helps, because no single wrong answer reaches 45%. Now raise correlation: the curve flattens toward p. Copies of the same mistake are not independent votes. This is exactly Kahneman's meeting advice, written as maths.</p>
+  </aside>
+</section>
+
+<!-- 19 ─────────────────────────────── DECOMPOSITION -->
+<section class="slide" data-part="2. Slow prompts" data-title="Decomposition">
+  <h2 class="tk">Decomposition: least-to-most, plan-and-solve, step-back</h2>
+  <div class="cols">
+    <div class="stack">
+      <div class="eq" style="font-size:28px">\[ p(a \mid q) \approx \prod_{j=1}^{m} p_\theta\big(s_j \mid q,\, s_{\lt j}\big)\cdot p_\theta(a \mid q, s_{1:m}) \]</div>
+      <p class="small">Replace one hard step with a chain of easy ones. If each sub-step succeeds with \(p_j\), the chain succeeds with \(\prod_j p_j\): <b>keep steps few and easy</b>.</p>
+      <div class="fact"><div class="n"><span class="from">16.2 →</span> 99.7%</div><p>SCAN length split, code-davinci-002: CoT vs least-to-most prompting (Zhou et al., ICLR 2023).</p></div>
+    </div>
+    <div class="stack">
+      <table class="grid tight">
+        <tr><th>Technique</th><th>Prompt move</th></tr>
+        <tr><td>Least-to-most</td><td>"First list the sub-questions, then answer them in order, reusing earlier answers."</td></tr>
+        <tr><td>Plan-and-solve</td><td>"First devise a plan. Then carry it out step by step." (Wang et al., ACL 2023)</td></tr>
+        <tr><td>Step-back</td><td>"What general principle applies here?" then solve with it (Zheng et al., ICLR 2024)</td></tr>
+      </table>
+      <p class="small"><b>Kahneman link:</b> System 2 is slow because it handles one thing at a time. Decomposition makes the one-thing-at-a-time explicit.</p>
+    </div>
+  </div>
+  <aside class="notes">
+<p><b>[38:00–40:00]</b> The product formula has a sharp lesson: ten steps at 95% each give only 60%. Decomposition helps when the sub-steps are much easier than the whole, as in SCAN where test commands are longer than anything in the examples. Least-to-most generalises to longer problems because each sub-answer becomes context for the next.</p>
+  </aside>
+</section>
+
+<!-- 20 ─────────────────────────────── TREE OF THOUGHTS -->
+<section class="slide" data-part="2. Slow prompts" data-title="Tree of Thoughts and the Game of 24">
+  <h2 class="tk">Tree of Thoughts: search instead of a single chain</h2>
+  <div class="cols w40">
+    <div class="stack">
+      <p class="small">Combine four numbers with + − × ÷ to make 24. A chain can commit early to a dead end. ToT proposes several thoughts per step, scores them, and backtracks (breadth-first or depth-first search).</p>
+      <div class="eq" style="font-size:26px">\[ P(\text{one chain hits 24}) = \rho_1 \]</div>
+      <div class="eq" style="font-size:26px">\[ P(\text{best of } N \text{ with a checker}) = 1-(1-\rho_1)^N \]</div>
+      <p class="small">Search with a good evaluator succeeds whenever <em>any</em> path works.</p>
+      <div class="fact"><div class="n"><span class="from">4 →</span> 74%</div><p>Game of 24, GPT-4: CoT vs ToT with breadth 5 (Yao et al., NeurIPS 2023).</p></div>
+    </div>
+    <div class="panel g24">
+      <div class="seg" id="g24-presets" style="margin-bottom:10px">
+        <button type="button" data-v="4 9 10 13" aria-pressed="true">4 9 10 13</button>
+        <button type="button" data-v="1 1 4 6" aria-pressed="false">1 1 4 6</button>
+        <button type="button" data-v="3 3 8 8" aria-pressed="false">3 3 8 8</button>
+        <button type="button" data-v="2 5 7 9" aria-pressed="false">2 5 7 9</button>
+        <button type="button" data-v="1 1 1 1" aria-pressed="false">1 1 1 1</button>
+      </div>
+      <div class="row"><input type="text" id="g24-in" value="4 9 10 13" aria-label="Four numbers"><button class="btn" id="g24-go" type="button">Search</button></div>
+      <div class="stats">
+        <div class="stat"><span class="n" id="g24-p1"></span><span class="l">one random chain hits 24</span></div>
+        <div class="stat"><span class="n" id="g24-p5"></span><span class="l">best of 5 chains (with a checker)</span></div>
+        <div class="stat"><span class="n" id="g24-nodes"></span><span class="l">nodes in the full tree</span></div>
+      </div>
+      <p class="tag" id="g24-sub"></p>
+      <div class="steps" id="g24-steps"></div>
+    </div>
+  </div>
+  <aside class="notes">
+<p><b>[40:00–43:00]</b> Ask the class to solve 4 9 10 13 on paper for 60 seconds. Then press Search. Look at the first number: a randomly chosen chain of three operations reaches 24 only a small percentage of the time. That is System 1 committing to its first idea. The tree has thousands of nodes; search finds a path in milliseconds. 3 3 8 8 is famously hard for people (needs a fraction). 1 1 1 1 has no solution: only search can prove that.</p>
+<p>Note: the "one random chain" figure is for uniformly random operations; a model is better than random but has the same structural problem.</p>
+  </aside>
+</section>
+
+<!-- 21 ─────────────────────────────── PAL -->
+<section class="slide" data-part="2. Slow prompts" data-title="Program-aided prompting">
+  <h2 class="tk">Program-aided prompting: outsource the arithmetic</h2>
+  <div class="cols">
+    <div class="stack">
+      <pre class="code"><span class="c"># Prompt: "Write Python that computes the answer."</span>
+<span class="c"># Model output:</span>
+total, diff = <span class="k">1.10</span>, <span class="k">1.00</span>
+<span class="c"># ball + (ball + diff) = total</span>
+ball = (total - diff) / <span class="k">2</span>
+print(round(ball, <span class="k">2</span>))    <span class="c"># 0.05</span></pre>
+      <p class="small">The model translates the problem into code; an interpreter runs it. Errors left are errors of understanding, not of calculation.</p>
+    </div>
+    <div class="stack">
+      <div class="eq" style="font-size:28px">\[ a = \operatorname{exec}\big(c\big),\qquad c \sim p_\theta(c \mid q) \]</div>
+      <div class="fact"><div class="n"><span class="from">65.6 →</span> 72.0%</div><p>GSM8K with Codex: CoT vs PAL. The gap is far larger on GSM-Hard, where numbers are big (Gao et al., ICML 2023).</p></div>
+      <p class="small"><b>Kahneman link:</b> System 2 is lazy and its working memory is small. Sensible people write down long multiplications. A model with a Python tool is doing the same.</p>
+    </div>
+  </div>
+  <aside class="notes">
+<p><b>[43:00–44:00]</b> Quick slide. The model is good at translation and bad at long arithmetic. PAL splits the job: the model writes the program, Python executes. On GSM-Hard, where the GSM8K numbers are replaced with large ones, CoT collapses and PAL holds up. This is the bridge to tool use and agents.</p>
+  </aside>
+</section>
+
+<!-- 22 ─────────────────────────────── SELF-CRITIQUE -->
+<section class="slide" data-part="2. Slow prompts" data-title="Self-critique needs new evidence">
+  <h2 class="tk">Self-critique works only with new evidence</h2>
+  <div class="cols">
+    <div class="stack">
+      <p class="kq"><b>WYSIATI</b>: "What you see is all there is." System 1 builds the most coherent story from what is in front of it and ignores what is missing (Kahneman, 2011, ch. 7).</p>
+      <p class="small">A model asked "are you sure?" sees the same context as before. Huang et al. (ICLR 2024) found that intrinsic self-correction, with no external feedback, often failed to improve reasoning accuracy and sometimes reduced it.</p>
+      <p class="small">Critique helps when the loop adds information: unit tests, a calculator, a retrieved document, a compiler error (Reflexion: Shinn et al., NeurIPS 2023).</p>
+    </div>
+    <div class="stack">
+      <h3>Voting vs verifying</h3>
+      <table class="grid tight">
+        <tr><th>Selector</th><th>Success with \(N\) samples</th></tr>
+        <tr><td>Majority vote</td><td>needs \(p\) to beat every wrong answer</td></tr>
+        <tr><td>Perfect verifier</td><td>\(1 - (1-p)^N\)</td></tr>
+      </table>
+      <p class="small">With \(p = 0.3\) and \(N = 10\): voting often fails, a perfect checker succeeds with probability \(1 - 0.7^{10} \approx 97\%\). <b>If you can check an answer, check it; don't vote.</b></p>
+    </div>
+  </div>
+  <aside class="notes">
+<p><b>[44:00–46:00]</b> WYSIATI is Kahneman's best phrase for model behaviour: the model only knows what is in the context. Asking it to reflect without new information mostly re-runs the same System 1. Contrast the two selectors: with a reliable checker, coverage grows as 1 − (1 − p)^N, even when the model is usually wrong. That is why code agents run tests.</p>
+  </aside>
+</section>
+
+<!-- 23 ─────────────────────────────── REASONING MODELS -->
+<section class="slide" data-part="2. Slow prompts" data-title="Reasoning models: System 2 trained in">
+  <h2 class="tk">Reasoning models: System 2, trained in</h2>
+  <div class="cols">
+    <div class="stack">
+      <p class="small">OpenAI o1 (2024) and DeepSeek-R1 (2025) are trained with reinforcement learning to produce long reasoning before answering, rewarded on verifiable outcomes such as correct maths answers or passing tests.</p>
+      <div class="eq" style="font-size:28px">\[ \max_\theta\; \mathbb{E}_{q,\,(r,a)\sim\pi_\theta}\big[R(a)\big] - \beta\, \mathrm{KL}\big(\pi_\theta \,\|\, \pi_{\text{ref}}\big) \]</div>
+      <p class="small">The model learns <em>when</em> and <em>how long</em> to think. Accuracy then scales with test-time compute (more thinking tokens).</p>
+    </div>
+    <div class="stack">
+      <h3>Prompting changes</h3>
+      <ul class="small">
+        <li>"Think step by step" is mostly redundant: they already do.</li>
+        <li>The DeepSeek-R1 report found few-shot prompting consistently <b>degraded</b> performance and recommends zero-shot prompts that state the problem and output format.</li>
+        <li>Spend effort on the <b>specification</b>: goal, constraints, success criteria, format.</li>
+        <li>Use the effort or budget setting to trade cost for accuracy.</li>
+      </ul>
+      <p class="cite">DeepSeek-AI, DeepSeek-R1 (arXiv:2501.12948); OpenAI, "Learning to reason with LLMs" (2024).</p>
+    </div>
+  </div>
+  <aside class="notes">
+<p><b>[46:00–48:00]</b> Everything in Part 2 was a way to coax System 2 out of a System 1 machine. Reasoning models internalise it through RL: they decide how long to think. So prompt them differently: specify clearly, skip hand-written reasoning templates, and avoid long few-shot chains that may constrain their own reasoning. The KL term keeps the policy close to the base model; details in the handout.</p>
+  </aside>
+</section>
+
+<!-- 24 ─────────────────────────────── TAXI -->
+<section class="slide" data-part="3. Bias as bugs" data-title="Base-rate neglect: the taxi cab">
+  <p class="part-label">Part 3 · Human biases as prompting bugs</p>
+  <h2 class="tk">Base-rate neglect: the taxi cab problem</h2>
+  <div class="cols w40">
+    <div class="stack">
+      <p class="small">A cab was in a hit-and-run at night. 85% of the city's cabs are Green and 15% are Blue. A witness said "Blue", and in tests the witness is right 80% of the time. How likely is it the cab was Blue? <span class="cite">(Tversky &amp; Kahneman; Kahneman 2011, ch. 16)</span></p>
+      <div class="eq" style="font-size:23px">\[ P(B\mid \text{“B”}) = \frac{0.8 \times 0.15}{0.8 \times 0.15 + 0.2 \times 0.85} = \frac{0.12}{0.29} \approx 0.41 \]</div>
+      <p class="small">Most people say about 80%. <b>Prompt fix:</b> "First state the base rates, then update with the evidence," or ask for natural frequencies (Gigerenzer &amp; Hoffrage, 1995).</p>
+    </div>
+    <div class="panel">
+      <label class="ctl">Blue cabs <input type="range" id="tx-b" min="0.01" max="0.5" step="0.01" value="0.15"><output id="tx-bv"></output></label>
+      <label class="ctl">Witness right <input type="range" id="tx-a" min="0.5" max="0.99" step="0.01" value="0.8"><output id="tx-av"></output></label>
+      <div class="dots" id="tx-dots" style="margin-top:12px"></div>
+      <p class="legend"><span><i style="background:var(--attn);opacity:.5"></i>Blue cab</span><span><i style="background:var(--ok);opacity:.4"></i>Green cab</span><span><i style="box-shadow:0 0 0 2px var(--heat)"></i>witness says "Blue"</span></p>
+      <div class="stat" style="margin-top:12px"><span class="n" id="tx-post"></span><span class="l">P(cab was Blue | witness says Blue)</span></div>
+      <p class="small" id="tx-freq" style="font-size:18px;margin-top:8px"></p>
+    </div>
+  </div>
+  <aside class="notes">
+<p><b>[48:00–50:00]</b> Ask for a quick guess first: most say 80%. Then the dot grid: of 100 cabs, 15 Blue; the witness flags 12 of them and also wrongly flags 17 Green ones. 12 out of 29 is 41%. Move the base-rate slider to 1%: even an excellent witness is mostly wrong. Prompting lesson: models can also ignore base rates unless the prompt structures the reasoning: base rate first, likelihood second, or count in natural frequencies.</p>
+  </aside>
+</section>
+
+<!-- 25 ─────────────────────────────── LINDA -->
+<section class="slide" data-part="3. Bias as bugs" data-title="The conjunction fallacy">
+  <h2 class="tk">Representativeness: Linda and the conjunction rule</h2>
+  <div class="cols">
+    <div class="stack">
+      <p class="small">Linda is 31, single, outspoken and very bright. She studied philosophy and was deeply concerned with discrimination and social justice. Which is more probable?</p>
+      <div class="poll" data-poll>
+        <span>(a) Linda is a bank teller.</span><span class="row"><button class="btn quiet mini" data-inc="a" type="button">+1</button><span class="cnt" data-cnt="a">0</span></span>
+        <span>(b) Linda is a bank teller and is active in the feminist movement.</span><span class="row"><button class="btn quiet mini" data-inc="b" type="button">+1</button><span class="cnt" data-cnt="b">0</span></span>
+      </div>
+      <button class="btn" data-reveal="linda-r" type="button" style="margin-top:14px;align-self:flex-start">Reveal</button>
+    </div>
+    <div class="reveal" id="linda-r">
+      <div class="eq">\[ P(A \cap B) = P(A)\,P(B \mid A) \le P(A) \]</div>
+      <p class="small">(b) can never be more probable than (a). In Tversky &amp; Kahneman's (1983) studies a large majority still picked (b): the description is <em>representative</em> of a feminist, so the conjunction feels likelier.</p>
+      <p class="small"><b>Models:</b> Binz &amp; Schulz (PNAS 2023) found GPT-3 made human-like errors on several such vignettes, while noting the classic versions may be memorised. Hagendorff et al. (Nature Computational Science, 2023) saw intuitive errors on CRT-style items fall sharply in later chat models.</p>
+      <p class="small"><b>Prompt fix:</b> ask the model to name the events, write the probability rule that relates them, then answer.</p>
+    </div>
+  </div>
+  <aside class="notes">
+<p><b>[50:00–52:00]</b> Take a hand vote and click the counters. Reveal the one-line proof. Emphasise the testing lesson for models: famous problems are in the training data, so a correct answer may be memory, not reasoning. To test reasoning, change names, numbers and wording; that is why the lab file includes fresh variants.</p>
+  </aside>
+</section>
+
+<!-- 26 ─────────────────────────────── AVAILABILITY / RAG -->
+<section class="slide" data-part="3. Bias as bugs" data-title="Availability and retrieval">
+  <h2 class="tk">Availability: give the model the facts, don't trust recall</h2>
+  <div class="cols">
+    <div class="stack">
+      <p class="small"><b>Availability heuristic:</b> people judge how frequent something is by how easily examples come to mind (Kahneman 2011, ch. 12–13).</p>
+      <p class="small"><b>Models:</b> accuracy on a fact tracks how often it appeared in pretraining data; rare, long-tail facts are answered much worse (Kandpal et al., ICML 2023).</p>
+      <p class="small"><b>Retrieval-augmented generation</b> puts evidence in the context instead of relying on recall:</p>
+      <div class="eq" style="font-size:28px">\[ p(y \mid q) \approx \sum_{d \in \text{top-}k(q)} p_\eta(d \mid q)\; p_\theta(y \mid q, d) \]</div>
+      <p class="cite">Lewis et al. (NeurIPS 2020).</p>
+    </div>
+    <div class="stack">
+      <pre class="console"><span class="who">RAG prompt</span>Answer using ONLY the documents below.
+Cite the document id for each claim.
+If the answer is not in the documents,
+say "not found".
+
+[doc 3] … [doc 7] … [doc 12] …
+
+Question: …</pre>
+      <p class="small"><b>ReAct</b> extends this into a loop: Thought → Action (search, calculator, code) → Observation → Thought… (Yao et al., ICLR 2023). Each observation is the new evidence that WYSIATI says the model lacks.</p>
+    </div>
+  </div>
+  <aside class="notes">
+<p><b>[52:00–53:00]</b> One minute. A model's parametric memory is like human availability: frequent things come to mind easily, rare things don't. RAG replaces recall with reading. The prompt template on the right has three important lines: only these documents, cite ids, and permission to say "not found".</p>
+  </aside>
+</section>
+
+<!-- 27 ─────────────────────────────── AUTO-PROMPTING -->
+<section class="slide" data-part="4. Wrap-up" data-title="Letting the machine write the prompt">
+  <p class="part-label">Part 4 · Wrap-up</p>
+  <h2 class="tk">Letting the machine write the prompt</h2>
+  <div class="cols">
+    <div class="stack">
+      <p class="small">Treat the \(\arg\max\) from slide 5 as a black-box optimisation problem. An LLM proposes prompts; a scorer evaluates them on a dev set; the best go back as context.</p>
+      <div class="eq" style="font-size:28px">\[ x_{t+1} \sim p_{\text{opt}}\big(x \mid \{(x_i, s_i)\}_{i \le t}\big),\quad s_i = \widehat{\mathbb{E}}\,m(x_i) \]</div>
+      <ul class="small">
+        <li><b>APE</b> (Zhou et al., ICLR 2023): generate and select instructions.</li>
+        <li><b>OPRO</b> (Yang et al., ICLR 2024): optimisation by prompting.</li>
+        <li><b>DSPy</b> (Khattab et al., ICLR 2024): compile pipelines, optimise prompts and demos.</li>
+      </ul>
+    </div>
+    <div class="stack">
+      <div class="fact"><div class="n">80.2%</div><p>GSM8K, PaLM 2-L, with the OPRO-found instruction "Take a deep breath and work on this problem step-by-step" (Yang et al., 2024).</p></div>
+      <p class="small"><b>Caution:</b> an optimiser tuned on one dev set can overfit to it, like any model selection. Keep a held-out test set, and expect found phrasings to transfer poorly across models.</p>
+    </div>
+  </div>
+  <aside class="notes">
+<p><b>[53:00–54:00]</b> One minute. The strangest phrase in prompting, "take a deep breath", was found by an optimiser, not by a person. The lesson is not to copy the phrase; it's that prompt search is model selection, so all the usual rules about held-out data apply.</p>
+  </aside>
+</section>
+
+<!-- 28 ─────────────────────────────── CHEAT SHEET -->
+<section class="slide" data-part="4. Wrap-up" data-title="Cheat sheet">
+  <h2 class="tk">Cheat sheet: which technique, when, at what cost</h2>
+  <table class="grid tight">
+    <tr><th>Situation</th><th>Technique</th><th>Calls / tokens</th><th>Mathematical idea</th></tr>
+    <tr><td>Simple, well-defined task</td><td>Zero-shot with full specification</td><td>1× / low</td><td>Lower conditional entropy</td></tr>
+    <tr><td>Format or label space is unclear</td><td>Few-shot, balanced, shuffled</td><td>1× / medium</td><td>Bayesian task inference</td></tr>
+    <tr><td>Reading label probabilities</td><td>Contextual calibration</td><td>+1 call</td><td>Divide out the prompt's prior</td></tr>
+    <tr><td>Multi-step reasoning, standard model</td><td>Zero- or few-shot CoT</td><td>1× / 5–10× output</td><td>Latent rationale, serial compute</td></tr>
+    <tr><td>Answers vary between runs</td><td>Self-consistency, decorrelated prompts</td><td>N×</td><td>Monte Carlo marginalisation; \(\rho\) caps the gain</td></tr>
+    <tr><td>Long compositional problems</td><td>Least-to-most, plan-and-solve</td><td>1–3×</td><td>Product of easy steps</td></tr>
+    <tr><td>Search or planning puzzles</td><td>Tree of Thoughts</td><td>10–100×</td><td>Search with an evaluator</td></tr>
+    <tr><td>Arithmetic, data, exact logic</td><td>Program-aided (PAL)</td><td>1× + interpreter</td><td>Exact execution</td></tr>
+    <tr><td>Answers can be checked</td><td>Generate, verify, revise</td><td>N× + checker</td><td>\(1-(1-p)^N\)</td></tr>
+    <tr><td>Facts may be rare or recent</td><td>RAG / ReAct</td><td>+ retrieval</td><td>Marginalise over documents</td></tr>
+    <tr><td>Reasoning model available</td><td>Zero-shot, clear spec, effort setting</td><td>budgeted</td><td>RL-trained test-time compute</td></tr>
+  </table>
+  <aside class="notes">
+<p><b>[54:00–56:00]</b> This is the slide to photograph. Read the cost column aloud: every System 2 technique buys accuracy with tokens. In production the question is never "which is best" but "which is best per rupee".</p>
+  </aside>
+</section>
+
+<!-- 29 ─────────────────────────────── QUIZ -->
+<section class="slide" data-part="4. Wrap-up" data-title="Quiz">
+  <h2 class="tk">Quiz: pick the technique (click to reveal)</h2>
+  <div class="quiz" style="grid-template-columns:repeat(2,1fr)">
+    <div class="q"><p>1. A sentiment classifier says "positive" 80% of the time, even on neutral text. Five of your six demonstrations are positive.</p><div class="a">Anchoring by majority label. Balance and shuffle the demonstrations, then apply contextual calibration with a content-free input.</div></div>
+    <div class="q"><p>2. A model gets 40% on a hard maths set. Sampling 20 answers and voting barely helps. The wrong answers are usually the same wrong number.</p><div class="a">Errors are correlated (and p &lt; 0.5). Voting can't fix that. Use PAL for the arithmetic, or a verifier, and decorrelate samples by varying prompts.</div></div>
+    <div class="q"><p>3. You ask "are you sure?" after a wrong answer about a library function. The model changes a correct part instead.</p><div class="a">WYSIATI: no new evidence. Give it something real: run the code, show the error message or the documentation, then ask it to revise.</div></div>
+    <div class="q"><p>4. A colleague adds a four-example chain-of-thought template to every prompt for a reasoning model. Accuracy drops.</p><div class="a">Expected: the DeepSeek-R1 report found few-shot prompting degrades its performance. Use a zero-shot prompt with a clear specification and output format.</div></div>
+  </div>
+  <aside class="notes">
+<p><b>[56:00–59:00]</b> Read each scenario, let the class shout an answer, then click to reveal. Spend about 40 seconds each.</p>
+  </aside>
+</section>
+
+<!-- 30 ─────────────────────────────── REFERENCES -->
+<section class="slide" data-part="4. Wrap-up" data-title="References and homework">
+  <h2 class="tk">References and homework</h2>
+  <div class="cols w60" style="flex:1;min-height:0">
+    <div class="refs" style="columns:1;max-height:640px">
+      <h3>Psychology</h3>
+      <p>Kahneman, D. (2011). <i>Thinking, Fast and Slow</i>. Farrar, Straus and Giroux.</p>
+      <p>Tversky, A. &amp; Kahneman, D. (1974). Judgment under uncertainty: heuristics and biases. <i>Science</i>.</p>
+      <p>Tversky, A. &amp; Kahneman, D. (1981). The framing of decisions and the psychology of choice. <i>Science</i>.</p>
+      <p>Tversky, A. &amp; Kahneman, D. (1983). Extensional versus intuitive reasoning: the conjunction fallacy. <i>Psych. Review</i>.</p>
+      <p>Frederick, S. (2005). Cognitive reflection and decision making. <i>J. Econ. Perspectives</i>.</p>
+      <p>Gigerenzer, G. &amp; Hoffrage, U. (1995). How to improve Bayesian reasoning without instruction. <i>Psych. Review</i>.</p>
+      <p>Tenenbaum, J. (1999). Bayesian modeling of human concept learning. <i>NeurIPS</i>.</p>
+      <h3>Prompting</h3>
+      <p>Brown et al. (2020). Language models are few-shot learners. <i>NeurIPS</i>.</p>
+      <p>Zhao et al. (2021). Calibrate before use. <i>ICML</i>.</p>
+      <p>Xie et al. (2022). ICL as implicit Bayesian inference. <i>ICLR</i>.</p>
+      <p>Min et al. (2022). Rethinking the role of demonstrations. <i>EMNLP</i>.</p>
+      <p>Wei et al. (2022). Chain-of-thought prompting. <i>NeurIPS</i>.</p>
+      <p>Kojima et al. (2022). LLMs are zero-shot reasoners. <i>NeurIPS</i>.</p>
+      <p>Wang et al. (2023). Self-consistency. <i>ICLR</i>.</p>
+      <p>Zhou et al. (2023). Least-to-most prompting. <i>ICLR</i>.</p>
+      <p>Wang, L. et al. (2023). Plan-and-solve prompting. <i>ACL</i>.</p>
+      <p>Zheng, H. S. et al. (2024). Step-back prompting. <i>ICLR</i>.</p>
+      <p>Yao et al. (2023). Tree of Thoughts. <i>NeurIPS</i>.</p>
+      <p>Gao et al. (2023). PAL: program-aided language models. <i>ICML</i>.</p>
+      <p>Yao et al. (2023). ReAct. <i>ICLR</i>.</p>
+      <p>Shinn et al. (2023). Reflexion. <i>NeurIPS</i>.</p>
+      <p>Huang et al. (2024). LLMs cannot self-correct reasoning yet. <i>ICLR</i>.</p>
+      <p>Lewis et al. (2020). Retrieval-augmented generation. <i>NeurIPS</i>.</p>
+      <p>Zhou, Y. et al. (2023). APE. <i>ICLR</i>. Yang et al. (2024). OPRO. <i>ICLR</i>. Khattab et al. (2024). DSPy. <i>ICLR</i>.</p>
+      <p>Sclar et al. (2024). Quantifying sensitivity to prompt formatting. <i>ICLR</i>.</p>
+      <p>Zheng, M. et al. (2024). Is "a helpful assistant" the best role? <i>Findings of EMNLP</i>.</p>
+      <p>Merrill &amp; Sabharwal (2024). Expressive power of transformers with CoT. <i>ICLR</i>. Feng et al. (2023). <i>NeurIPS</i>.</p>
+      <h3>Models as subjects</h3>
+      <p>Jones &amp; Steinhardt (2022). Capturing failures of LLMs via human cognitive biases. <i>NeurIPS</i>.</p>
+      <p>Binz &amp; Schulz (2023). Using cognitive psychology to understand GPT-3. <i>PNAS</i>.</p>
+      <p>Hagendorff, Fabi &amp; Kosinski (2023). Human-like intuitive behavior and reasoning biases emerged in LLMs. <i>Nature Comp. Sci.</i></p>
+      <p>Kandpal et al. (2023). LLMs struggle to learn long-tail knowledge. <i>ICML</i>.</p>
+      <p>DeepSeek-AI (2025). DeepSeek-R1. arXiv:2501.12948.</p>
+    </div>
+    <div class="stack">
+      <h3>Homework (lab file)</h3>
+      <ol class="small" style="padding-left:1.2em">
+        <li>Derive \(\operatorname{Var}\) of an average of correlated errors (handout §4).</li>
+        <li>Prove the Hoeffding bound for majority vote (§6).</li>
+        <li>Run <code>prompting_lab.py</code>: reproduce the voting curves and the number-game posterior.</li>
+        <li>With any model you can access, write five <em>new</em> CRT-style questions (new numbers, new objects). Compare direct vs zero-shot CoT vs PAL. Report accuracy and tokens.</li>
+      </ol>
+    </div>
+  </div>
+  <aside class="notes">
+<p><b>[59:00–59:30]</b> Point to the handout and lab file. Homework item 4 is the important one: write fresh problems so memorisation can't help, and report cost alongside accuracy.</p>
+  </aside>
+</section>
+
+<!-- 31 ─────────────────────────────── QUESTIONS -->
+<section class="slide center-v" data-part="4. Wrap-up" data-title="Questions">
+  <h1 class="tk" style="font-size:88px">Questions?</h1>
+  <pre class="console" style="font-size:28px;max-width:1000px;margin-top:40px">Q: What did we learn today?
+A: <span class="hl">Fast prompts choose the distribution.
+   Slow prompts buy the computation.
+   Checks beat votes. Base rates first.</span><span class="caret" aria-hidden="true"></span></pre>
+  <p class="byline" style="margin-top:40px"><b>Parv Agarwal</b><br>github.com/Parv-01 · parvagarwal.is-a.dev</p>
+  <aside class="notes">
+<p><b>[59:30–60:00]</b> Summarise with the four lines on screen and open the floor.</p>
+  </aside>
+</section>
+
+<div class="ctxbar" aria-hidden="true">
+  <span class="sec" id="ctx-sec"></span>
+  <div class="cells" id="ctx-cells"></div>
+  <span class="count" id="ctx-count"></span>
+</div>
+</main>
+
+<aside class="drawer" id="drawer" aria-label="Speaker notes for the current slide">
+  <h4 id="drawer-h">Notes</h4>
+  <div id="drawer-body"></div>
+</aside>
+
+<div class="overlay" id="help" role="dialog" aria-modal="true" aria-labelledby="help-h">
+  <div class="box">
+    <h4 id="help-h">Keyboard shortcuts</h4>
+    <table>
+      <tr><td><kbd>→</kbd> <kbd>Space</kbd> <kbd>PgDn</kbd></td><td>Next slide</td></tr>
+      <tr><td><kbd>←</kbd> <kbd>PgUp</kbd></td><td>Previous slide</td></tr>
+      <tr><td><kbd>Home</kbd> <kbd>End</kbd></td><td>First or last slide</td></tr>
+      <tr><td><kbd>N</kbd></td><td>Speaker notes with timings</td></tr>
+      <tr><td><kbd>G</kbd></td><td>Jump to a slide</td></tr>
+      <tr><td><kbd>T</kbd></td><td>Light / dark theme</td></tr>
+      <tr><td><kbd>F</kbd></td><td>Full screen</td></tr>
+      <tr><td><kbd>Esc</kbd></td><td>Close this panel</td></tr>
+    </table>
+    <p style="margin-top:14px">Works offline: open <code>index.html</code> directly. <code>#12</code> in the URL opens slide 12.</p>
+  </div>
+</div>
+
+<div class="overlay" id="goto" role="dialog" aria-modal="true" aria-labelledby="goto-h">
+  <div class="box">
+    <h4 id="goto-h">Jump to a slide</h4>
+    <ul class="goto-list" id="goto-list"></ul>
+  </div>
+</div>
+
+<script defer src="assets/vendor/katex/katex.min.js"></script>
+<script defer src="assets/vendor/katex/contrib/auto-render.min.js"></script>
+<script defer src="assets/js/class.js"></script>
+<script defer src="assets/js/deck.js"></script>
+</body>
+</html>

@@ -1,0 +1,507 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Class Notes: Prompting Techniques</title>
+<link rel="stylesheet" href="assets/css/fonts.css">
+<link rel="stylesheet" href="assets/vendor/katex/katex.min.css">
+<style>
+  :root { --ink:#0F1B2D; --ink2:#33445A; --muted:#5B6B7F; --rule:#C4CFDA; --paper:#FBFCFD; --panel:#EEF2F6; --attn:#4B2BD6; --heat:#FFB020; --ok:#0E7C5A; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --ink:#E6ECF3; --ink2:#B9C6D6; --muted:#8C9CB0; --rule:#2B3A55; --paper:#0E1624; --panel:#16213A; --attn:#A493FF; --heat:#FFC24A; --ok:#4CC79A; } }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font: 17px/1.62 "Source Serif 4", Georgia, serif; }
+  main { max-width: 860px; margin: 0 auto; padding: 48px 24px 96px; }
+  h1, h2, h3, h4 { font-family: "Bricolage Grotesque", system-ui, sans-serif; line-height: 1.2; color: var(--ink); }
+  h1 { font-size: 40px; margin: 0 0 8px; letter-spacing: -0.02em; }
+  h2 { font-size: 27px; margin: 56px 0 12px; padding-top: 12px; border-top: 2px solid var(--ink); }
+  h3 { font-size: 20px; margin: 28px 0 8px; }
+  h4 { font-size: 16px; margin: 18px 0 6px; color: var(--attn); }
+  p, li { max-width: 72ch; }
+  .sub { color: var(--ink2); font-size: 19px; margin: 0 0 4px; }
+  .meta { color: var(--muted); font-family: "Bricolage Grotesque", system-ui, sans-serif; font-size: 14px; }
+  code { font-family: "JetBrains Mono", ui-monospace, monospace; font-size: .86em; background: var(--panel); padding: 1px 4px; border-radius: 3px; }
+  pre { font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 13.5px; line-height: 1.5; background: var(--panel); border-left: 3px solid var(--attn); padding: 14px 16px; overflow-x: auto; border-radius: 0 6px 6px 0; white-space: pre; }
+  pre.prompt { border-left-color: var(--heat); white-space: pre-wrap; }
+  pre code { background: none; padding: 0; font-size: inherit; }
+  .box { background: var(--panel); border-radius: 6px; padding: 14px 18px; margin: 16px 0; }
+  .box.k { border-left: 4px solid var(--heat); border-radius: 0 6px 6px 0; }
+  .box.k b:first-child { font-family: "Bricolage Grotesque", system-ui, sans-serif; }
+  .tag { font-family: "Bricolage Grotesque", system-ui, sans-serif; font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+  table { border-collapse: collapse; width: 100%; font-size: 15px; margin: 12px 0; }
+  th { text-align: left; font-family: "Bricolage Grotesque", system-ui, sans-serif; font-size: 13px; color: var(--muted); border-bottom: 2px solid var(--ink); padding: 6px 8px; }
+  td { border-bottom: 1px solid var(--rule); padding: 6px 8px; vertical-align: top; }
+  .toc { columns: 2; column-gap: 32px; font-size: 15px; padding-left: 2em; }
+  .toc a { color: var(--ink); text-decoration: none; }
+  .toc a:hover { color: var(--attn); }
+  a { color: var(--attn); }
+  .katex-display { overflow-x: auto; overflow-y: hidden; padding: 2px 0; }
+  .ex { border-top: 1px dashed var(--rule); padding-top: 8px; }
+  details { margin: 6px 0 14px; }
+  summary { cursor: pointer; font-family: "Bricolage Grotesque", system-ui, sans-serif; font-weight: 600; color: var(--attn); }
+  @media print {
+    body { background: #fff; color: #000; font-size: 11.5pt; }
+    main { max-width: none; padding: 0; }
+    h2 { break-before: auto; break-after: avoid; }
+    h3, h4 { break-after: avoid; }
+    pre, .box, table, .katex-display { break-inside: avoid; }
+    pre { white-space: pre-wrap; font-size: 9pt; }
+    details { display: block; } details > summary { list-style: none; }
+    a { color: inherit; text-decoration: none; }
+    .toc { columns: 2; }
+  }
+</style>
+</head>
+<body>
+<main>
+
+<p class="tag">Class notes · handout</p>
+<h1>Prompting Techniques, Fast and Slow</h1>
+<p class="sub">Derivations, code and prompt templates for the 60-minute class, organised around Kahneman's System 1 and System 2.</p>
+<p class="meta">Parv Agarwal · AI-NLP-ML Lab, IIT Patna · Companion files: <code>index.html</code> (slides), <code>lab/prompting_lab.py</code> (code). Everything runs offline.</p>
+
+<ol class="toc" start="0">
+  <li><a href="#runsheet">Run sheet for the class</a></li>
+  <li><a href="#setup">Set-up: a prompt as a condition</a></li>
+  <li><a href="#decoding">Decoding: temperature and top-p</a></li>
+  <li><a href="#zeroshot">Zero-shot: why specification helps</a></li>
+  <li><a href="#icl">Few-shot as Bayesian inference</a></li>
+  <li><a href="#calib">Anchoring and contextual calibration</a></li>
+  <li><a href="#framing">Framing and averaging correlated errors</a></li>
+  <li><a href="#cot">Chain-of-thought and serial computation</a></li>
+  <li><a href="#sc">Self-consistency: the full analysis</a></li>
+  <li><a href="#decomp">Decomposition</a></li>
+  <li><a href="#tot">Tree of Thoughts and search</a></li>
+  <li><a href="#pal">Program-aided prompting</a></li>
+  <li><a href="#verify">Self-critique and verifiers</a></li>
+  <li><a href="#reasoning">Reasoning models</a></li>
+  <li><a href="#bias">Bias as bugs: base rates, conjunction, availability</a></li>
+  <li><a href="#auto">Automatic prompt optimisation</a></li>
+  <li><a href="#cheat">Cheat sheet</a></li>
+  <li><a href="#exercises">Exercises with solutions</a></li>
+  <li><a href="#lab">Running the lab</a></li>
+  <li><a href="#refs">References</a></li>
+</ol>
+
+<div class="box k"><b>Kahneman in one paragraph.</b> <i>Thinking, Fast and Slow</i> (2011) describes two modes of thought. <b>System 1</b> is fast, automatic and associative: it produces an answer immediately, with no sense of effort. <b>System 2</b> is slow, deliberate and effortful: it does arithmetic, follows rules, and checks System 1's suggestions, but it is lazy and only engages when prompted. Most of the famous errors in the book (bat and ball, Linda, the taxi cab, anchoring, framing) are System 1 answers that System 2 failed to check. All examples below are paraphrased from the original research papers; read the book for Kahneman's own telling.</div>
+
+<!-- ================================================================== -->
+<h2 id="runsheet">0. Run sheet for the class (60 minutes)</h2>
+<table>
+<tr><th>Time</th><th>Slides</th><th>Content</th><th>Activity</th></tr>
+<tr><td>0–5</td><td>1–3</td><td>Opening, map, bat and ball</td><td>Five-second answer, show of hands</td></tr>
+<tr><td>5–12</td><td>4–6</td><td>Two systems, the one equation, decoding</td><td>Temperature slider: watch $0.05 appear</td></tr>
+<tr><td>12–27</td><td>7–13</td><td>Zero-shot, few-shot, number game, anchoring, calibration, framing, roles</td><td><b>Live anchoring experiment</b> (split by roll number)</td></tr>
+<tr><td>27–48</td><td>14–23</td><td>CoT, serial compute, playground, self-consistency, independence, decomposition, ToT, PAL, critique, reasoning models</td><td>17 × 24; playground predictions; Game of 24 on paper</td></tr>
+<tr><td>48–54</td><td>24–27</td><td>Taxi cab, Linda, availability/RAG, auto-prompting</td><td>Guess first, then reveal; hand vote on Linda</td></tr>
+<tr><td>54–60</td><td>28–31</td><td>Cheat sheet, quiz, homework, questions</td><td>Quiz: class shouts answers</td></tr>
+</table>
+<p><b>Before class:</b> open <code>index.html</code> in Chrome or Edge and press <kbd>F</kbd> for full screen. Press <kbd>N</kbd> to see speaker notes with timings. If running late, skip slides 13, 21 and 27 (one minute each).</p>
+
+<!-- ================================================================== -->
+<h2 id="setup">1. Set-up: a prompt as a condition</h2>
+<p>A language model with parameters \(\theta\) assigns a probability to every token sequence. By the chain rule of probability, for an output \(y = (y_1,\dots,y_n)\) given an input \(x\):</p>
+\[ p_\theta(y \mid x) = \prod_{t=1}^{n} p_\theta(y_t \mid x, y_{\lt t}). \]
+<p>Pretraining minimises the negative log-likelihood of text, \(\mathcal{L}(\theta) = -\sum_t \log p_\theta(y_t \mid y_{\lt t})\). After training, \(\theta\) is frozen. <b>The only thing a prompt engineer controls is \(x\)</b> (and the decoding procedure). Prompt engineering is therefore the search problem</p>
+\[ x^{\ast} = \arg\max_{x \in \mathcal{V}^{\ast}} \; \mathbb{E}_{(q,a)\sim\mathcal{D}}\Big[ m\big(\operatorname{decode}\,p_\theta(\cdot \mid x \oplus q),\, a\big) \Big], \]
+<p>where \(\mathcal{V}^{\ast}\) is the set of all token strings, \(\oplus\) is concatenation, \(q\) a task input with reference answer \(a\), and \(m\) a metric such as exact match. The search space is discrete and astronomically large, which is why we use heuristics (the techniques below) or automatic optimisers (§15).</p>
+
+<h3>Compute per token: why System 1 and System 2 map onto models</h3>
+<p>A decoder-only transformer with \(P\) parameters spends about \(2P\) floating-point operations per generated token (one multiply and one add per weight), plus attention costs that grow with context length. Every token passes through the same \(L\) layers. Two consequences:</p>
+<ul>
+<li><b>Fixed effort per token.</b> The model cannot spend more computation on a "hard" token than an easy one. This is System 1: constant, automatic effort.</li>
+<li><b>Tokens are the only way to buy more computation.</b> If the model writes \(T\) intermediate tokens before answering, the answer is computed after roughly \(T \cdot L\) layers of serial processing, with all intermediate results stored in the context. This is System 2: effortful, serial, using working memory.</li>
+</ul>
+\[ \text{FLOPs(answer only)} \approx 2P\,|y|, \qquad \text{FLOPs(reason, then answer)} \approx 2P\,(|r| + |y|). \]
+
+<!-- ================================================================== -->
+<h2 id="decoding">2. Decoding: temperature and top-p</h2>
+<p>The network outputs logits \(z \in \mathbb{R}^{|\mathcal{V}|}\). Temperature-scaled softmax:</p>
+\[ p_i(T) = \frac{e^{z_i/T}}{Z(T)}, \qquad Z(T) = \sum_j e^{z_j/T}. \]
+
+<h4>Limits</h4>
+<p>Let \(z_{(1)}\) be the largest logit, unique. Dividing numerator and denominator by \(e^{z_{(1)}/T}\): \(p_i(T) = e^{(z_i - z_{(1)})/T} / \sum_j e^{(z_j - z_{(1)})/T}\). As \(T \to 0^+\), every exponent with \(z_j \lt z_{(1)}\) goes to \(-\infty\), so \(p \to\) one-hot on the argmax (<b>greedy decoding</b>). As \(T \to \infty\), every exponent goes to 0, so \(p_i \to 1/|\mathcal{V}|\) (uniform).</p>
+
+<h4>Entropy increases with temperature (derivation)</h4>
+<p>Write \(\beta = 1/T\). Then \(\log p_i = \beta z_i - \log Z(\beta)\), and the entropy in nats is</p>
+\[ H(\beta) = -\sum_i p_i \log p_i = \log Z(\beta) - \beta\, \mathbb{E}_p[z]. \]
+<p>Two standard facts about the log-partition function: \(\frac{d}{d\beta}\log Z = \mathbb{E}_p[z]\) and \(\frac{d}{d\beta}\mathbb{E}_p[z] = \operatorname{Var}_p(z)\). Differentiate:</p>
+\[ \frac{dH}{d\beta} = \mathbb{E}_p[z] - \mathbb{E}_p[z] - \beta \operatorname{Var}_p(z) = -\beta\,\operatorname{Var}_p(z) \le 0. \]
+<p>So entropy falls as \(\beta\) rises, i.e. <b>rises with \(T\)</b>. The lab checks this numerically (<code>python prompting_lab.py decode</code>).</p>
+
+<h4>Top-p (nucleus) sampling</h4>
+<p>Sort tokens by probability, keep the smallest prefix \(V_p\) whose mass is at least \(p\), renormalise: \(\tilde p_i = p_i\,\mathbb{1}[i \in V_p] / \sum_{j\in V_p} p_j\). It removes the long tail of unlikely tokens while adapting the cut-off to how peaked the distribution is.</p>
+<pre><code>def softmax_T(logits, T):
+    z = logits / max(T, 1e-8)
+    z = z - z.max()                  # shift-invariance: avoids overflow
+    e = np.exp(z)
+    return e / e.sum()
+
+def top_p(probs, p):
+    order = np.argsort(-probs)
+    k = np.searchsorted(np.cumsum(probs[order]), p) + 1
+    keep = np.zeros_like(probs, bool); keep[order[:k]] = True
+    out = np.where(keep, probs, 0.0)
+    return out / out.sum()</code></pre>
+<div class="box k"><b>Kahneman link.</b> At low temperature the model always emits its first impression, like System 1 with no second thought. The slide's illustrative logits put "$0.10" on top: greedy decoding then answers the bat-and-ball question wrongly every time. Diversity (higher \(T\)) is what later lets self-consistency find the right answer among several samples.</div>
+
+<!-- ================================================================== -->
+<h2 id="zeroshot">3. Zero-shot: why specification helps</h2>
+<p>An instruction-tuned model maps an instruction to behaviour. A complete zero-shot prompt usually has these parts:</p>
+<pre class="prompt">Role:        who the model is acting as, and for whom
+Task:        the exact operation (classify / extract / rewrite / solve)
+Context:     facts the model cannot know (domain, audience, data quirks)
+Constraints: what must and must not happen; what to do when unsure
+Format:      the exact output shape (one word, JSON schema, table)
+Input:       the data, clearly delimited</pre>
+
+<h4>Information never hurts on average (derivation)</h4>
+<p>Let \(Y\) be the output, \(X\) the short prompt and \(C\) extra context. Conditional entropy satisfies</p>
+\[ H(Y \mid X) - H(Y \mid X, C) = I(Y; C \mid X) \ge 0, \]
+<p>because conditional mutual information is a KL divergence, \(I(Y;C\mid X) = \mathbb{E}_{X,C}\,\mathrm{KL}\big(p(Y\mid X,C)\,\|\,p(Y\mid X)\big)\), and KL divergence is non-negative (Gibbs' inequality, from Jensen's inequality applied to \(-\log\)). So on average, adding context narrows the distribution of outputs. Two caveats: (1) "on average" over contexts; a particular misleading sentence can still push a particular output the wrong way; (2) a narrower distribution is only useful if it narrows around the <em>right</em> answer.</p>
+
+<!-- ================================================================== -->
+<h2 id="icl">4. Few-shot as Bayesian inference</h2>
+<p>Brown et al. (2020) showed that GPT-3 learns tasks from \(k\) demonstrations in the prompt with no gradient update (in-context learning, ICL). Xie et al. (2022) explain this as implicit Bayesian inference: pretraining documents are generated from latent "concepts" \(h\); a prompt of demonstrations \(S=(s_1,\dots,s_k)\) is evidence about which concept is active.</p>
+\[ p(y \mid x, S) = \sum_h p(y \mid x, h)\, p(h \mid S), \qquad p(h \mid S) \propto p(h) \prod_{i=1}^k p(s_i \mid h). \]
+
+<h3>The number game (Tenenbaum, 1999)</h3>
+<p>Hypotheses are sets of numbers in 1..100 ("even", "powers of 2", "between 10 and 30"). Examples are drawn uniformly from the true set (strong sampling), so</p>
+\[ p(s_i \mid h) = \frac{\mathbb{1}[s_i \in h]}{|h|} \quad\Rightarrow\quad p(h \mid S) \propto p(h)\,\frac{\prod_i \mathbb{1}[s_i\in h]}{|h|^k}. \]
+<h4>The size principle (derivation)</h4>
+<p>Take two hypotheses that both contain all \(k\) examples, \(h_1 \subset h_2\). Their posterior odds are</p>
+\[ \frac{p(h_1 \mid S)}{p(h_2 \mid S)} = \frac{p(h_1)}{p(h_2)}\left(\frac{|h_2|}{|h_1|}\right)^{k}. \]
+<p>The log odds grow <b>linearly</b> in \(k\) with slope \(\log(|h_2|/|h_1|)\). For \(S=\{16, 8, 2, 64\}\), "powers of 2" has 7 members and "even" has 50: the likelihood ratio is \((50/7)^4 \approx 2{,}600\). A handful of well-chosen examples identifies a specific concept; prior differences are overwhelmed quickly.</p>
+<h4>Posterior predictive</h4>
+\[ p(y \in C \mid S) = \sum_h \mathbb{1}[y \in h]\, p(h \mid S). \]
+<p>This is the shading on the slide's grid.</p>
+
+<h4>What the result by Min et al. (2022) means in this picture</h4>
+<p>Replacing demonstration labels with random labels barely hurt accuracy on many classification tasks. In the Bayesian picture, demonstrations carry evidence about the input distribution, the label set and the format, all of which identify the task concept even when individual labels are wrong. Wrong labels do reduce the evidence, so correct labels still matter, especially for tasks the model has not seen.</p>
+
+<pre><code>def posterior(D, H, prior):          # H: name -> set, prior: name -> p(h)
+    logp = {n: math.log(prior[n]) - len(D) * math.log(len(ext))
+            for n, ext in H.items() if all(d in ext for d in D)}
+    m = max(logp.values())
+    w = {n: math.exp(l - m) for n, l in logp.items()}   # log-sum-exp for stability
+    Z = sum(w.values())
+    return {n: v / Z for n, v in w.items()}</code></pre>
+
+<h4>Practical rules that follow</h4>
+<ul>
+<li><b>Diversity beats quantity.</b> Ten near-identical examples are weak evidence against alternative concepts.</li>
+<li><b>Cover the label space.</b> Show each label at least once.</li>
+<li><b>Match the format exactly.</b> The format is part of the concept.</li>
+</ul>
+
+<!-- ================================================================== -->
+<h2 id="calib">5. Anchoring and contextual calibration</h2>
+<div class="box k"><b>Anchoring (Tversky &amp; Kahneman, 1974).</b> Participants saw a wheel of fortune, rigged to stop at 10 or 65, then estimated the percentage of African countries in the UN. Median estimates were 25 (after 10) and 45 (after 65). An irrelevant number moved the answer.</div>
+<h3>The live experiment: permutation test</h3>
+<p>Group A (anchor 10) gives estimates \(a_1..a_m\); group B (anchor 65) gives \(b_1..b_n\). Test statistic \(d = \bar b - \bar a\). Under the null hypothesis that the anchor has no effect, the group labels are exchangeable. Shuffle the labels \(R\) times, recompute \(d^{(r)}\) each time, and estimate</p>
+\[ \hat p = \frac{1 + \#\{r : |d^{(r)}| \ge |d|\}}{R + 1}. \]
+<p>The \(+1\) terms make the estimate valid (never exactly zero). No normality assumption is needed, which suits a small class.</p>
+
+<h3>Anchors inside prompts</h3>
+<p>Zhao et al. (2021) found three biases in few-shot classification: <b>majority label</b> (favour labels frequent in the demonstrations), <b>recency</b> (favour the last example's label) and <b>common token</b> (favour frequent words). Jones &amp; Steinhardt (2022) adapted anchoring and framing tests from psychology and found analogous errors in code-generating models.</p>
+
+<h3>Contextual calibration (derivation)</h3>
+<p>Model the prompt's effect as a multiplicative bias on the label distribution: \(\hat p(y \mid x) \propto b_y \cdot \ell(y \mid x)\), where \(\ell\) is the evidence from the input and \(b\) is the bias the prompt (examples, order, format) adds. For a content-free input such as "N/A", the evidence is uninformative, \(\ell(y \mid \text{N/A}) \approx\) constant, so</p>
+\[ \hat p_{\text{cf}} := \hat p(y \mid \text{N/A}) \propto b_y. \]
+<p>Dividing out the bias recovers the evidence:</p>
+\[ \hat q(y \mid x) = \frac{\hat p(y\mid x)/\hat p_{\text{cf}}(y)}{\sum_{y'} \hat p(y'\mid x)/\hat p_{\text{cf}}(y')}, \quad\text{i.e.}\quad \hat q = \operatorname{normalise}\big(W \hat p\big),\; W = \operatorname{diag}(\hat p_{\text{cf}})^{-1}. \]
+<p>Zhao et al. present this as an affine transformation fitted with the content-free input, followed by softmax; the diagonal version above is the core idea.</p>
+<p><b>Worked example.</b> \(\hat p_{\text{cf}} = (0.70, 0.30)\), \(\hat p(y\mid x) = (0.60, 0.40)\). Then \(W\hat p = (0.857, 1.333)\), normalised \((0.39, 0.61)\): the decision flips from positive to negative. In the lab's simulation, calibration raises accuracy from 0.71 to 0.79 and restores a balanced prediction rate.</p>
+<pre><code>def calibrate(p_input, p_content_free):
+    q = np.diag(1.0 / p_content_free) @ p_input
+    return q / q.sum()</code></pre>
+<pre class="prompt">Template to measure the content-free bias:
+&lt;your exact few-shot prompt&gt;
+Review: "N/A" →
+(read the label probabilities; repeat with "" and "[MASK]" and average)</pre>
+
+<!-- ================================================================== -->
+<h2 id="framing">6. Framing and averaging correlated errors</h2>
+<div class="box k"><b>Framing (Tversky &amp; Kahneman, 1981).</b> Facing a disease expected to kill 600 people, 72% chose a sure option when outcomes were described as lives saved; with the same outcomes described as deaths, 78% chose the gamble.</div>
+<p>Models are sensitive to frames that carry no meaning at all. Sclar et al. (2024) found that changing separators, casing and spacing in few-shot prompts changed LLaMA-2-13B accuracy by up to 76 points on a task. The remedy is to treat the prompt as a random choice from a set of equivalent framings and average.</p>
+
+<h3>Variance of an average of correlated errors (derivation)</h3>
+<p>Let \(\varepsilon_1..\varepsilon_K\) be errors with \(\operatorname{Var}(\varepsilon_k)=\sigma^2\) and \(\operatorname{Cov}(\varepsilon_j,\varepsilon_k)=\rho\sigma^2\) for \(j\ne k\). Then</p>
+\[ \operatorname{Var}\Big(\frac1K\sum_k \varepsilon_k\Big) = \frac{1}{K^2}\Big[\sum_k \operatorname{Var}(\varepsilon_k) + \sum_{j\ne k}\operatorname{Cov}(\varepsilon_j,\varepsilon_k)\Big] = \frac{1}{K^2}\big[K\sigma^2 + K(K-1)\rho\sigma^2\big] \]
+\[ = \sigma^2\Big(\rho + \frac{1-\rho}{K}\Big) \xrightarrow{K\to\infty} \rho\sigma^2. \]
+<p><b>Interpretation.</b> Averaging removes the independent part of the error at rate \(1/K\) but never the shared part \(\rho\sigma^2\). Ten paraphrases of the same flawed prompt share its flaw. This one formula explains prompt ensembling, self-consistency's plateau (§8) and Kahneman's advice to collect independent judgments before discussion.</p>
+
+<h4>Prompt ensembling</h4>
+\[ \bar p(y\mid q) = \frac1K \sum_{k=1}^K p_\theta(y \mid x_k \oplus q). \]
+<pre><code>def ensemble(llm_probs, framings, q):
+    """llm_probs(prompt) -> np.array of label probabilities"""
+    P = np.stack([llm_probs(f.format(q=q)) for f in framings])
+    return P.mean(axis=0), P.std(axis=0)     # report the spread too</code></pre>
+
+<h3>Roles and priming: a note on evidence</h3>
+<p>Kahneman's book gave a chapter to behavioural priming. Many of those studies later failed to replicate, and Kahneman publicly acknowledged relying too much on small studies. For models, a systematic study of 162 roles in system prompts found personas did not reliably improve accuracy on factual questions (Zheng et al., 2024). Use roles to carry audience, standards and constraints, not as a magic word.</p>
+
+<!-- ================================================================== -->
+<h2 id="cot">7. Chain-of-thought and serial computation</h2>
+<p>Insert a latent rationale \(r\) between question and answer:</p>
+\[ p(a\mid q) = \sum_r p_\theta(r\mid q)\,p_\theta(a\mid q,r). \]
+<p>Standard CoT samples or greedily decodes one \(r\) and reads off \(a\): a single-sample approximation of the sum. Self-consistency (§8) uses many samples.</p>
+<table>
+<tr><th>Result</th><th>Setting</th><th>Source</th></tr>
+<tr><td>17.9% → 56.9%</td><td>GSM8K, PaLM 540B, few-shot CoT vs standard</td><td>Wei et al., 2022</td></tr>
+<tr><td>17.7% → 78.7%</td><td>MultiArith, text-davinci-002, "Let's think step by step"</td><td>Kojima et al., 2022</td></tr>
+</table>
+<p>Wei et al. reported that the gains appeared mainly at large model scale; smaller models wrote fluent but wrong chains.</p>
+
+<h3>Why writing tokens adds computational power</h3>
+<p>Multiplying two \(n\)-digit numbers involves carries that depend on earlier carries: a chain of serial dependencies whose length grows with \(n\). A fixed-depth network computes each output token with a fixed number \(L\) of sequential layer applications. Results of this kind are formalised by Merrill &amp; Sabharwal (2024): transformers that must answer immediately are limited to a weak class of parallel computations, while transformers allowed a number of intermediate decoding steps polynomial in the input length can simulate any polynomial-time computation. Feng et al. (2023) show related results for arithmetic and dynamic programming. The practical reading:</p>
+<ul>
+<li>CoT helps on tasks with serial structure: arithmetic, logic, multi-hop questions, planning.</li>
+<li>CoT does little for pure recall ("capital of Peru"): no serial computation is needed.</li>
+<li>CoT costs output tokens: typically 5–10× the length of a direct answer.</li>
+</ul>
+<pre class="prompt">Zero-shot CoT
+Q: {question}
+A: Let's think step by step. End with "Answer: &lt;value&gt;".
+
+Few-shot CoT
+Q: {example question 1}
+A: {worked reasoning}. Answer: {value}
+Q: {example question 2}
+A: {worked reasoning}. Answer: {value}
+Q: {question}
+A:</pre>
+<p>Always ask for a fixed answer marker ("Answer: …"). It makes extraction reliable, which self-consistency and evaluation depend on.</p>
+
+<!-- ================================================================== -->
+<h2 id="sc">8. Self-consistency: the full analysis</h2>
+<p>Sample \(N\) reasoning paths at temperature around 0.5–0.8, extract answers \(a_1..a_N\), return the most common:</p>
+\[ \hat a = \arg\max_a \sum_{i=1}^N \mathbb{1}[a_i = a]. \]
+<h4>It estimates the right quantity</h4>
+<p>Each \(a_i\) is a draw from the marginal \(p(a\mid q) = \sum_r p(r,a\mid q)\). The vote share \(\frac1N\sum_i \mathbb{1}[a_i=a]\) is an unbiased estimate of \(p(a\mid q)\) and converges to it by the law of large numbers. So \(\hat a \to \arg\max_a p(a\mid q)\): the mode of the <em>marginal</em> answer distribution, not the answer of one lucky or unlucky path. Wang et al. (2023) report GSM8K accuracy for PaLM 540B rising from 56.5% (CoT) to 74.4% with 40 sampled paths.</p>
+
+<h4>Binary case: exact accuracy</h4>
+<p>If each path is correct independently with probability \(p\) and all wrong paths give the same wrong answer (the worst case), with odd \(N\):</p>
+\[ \text{Acc}(N) = P\big(\text{Bin}(N,p) \gt N/2\big) = \sum_{k=\lceil N/2\rceil}^{N} \binom{N}{k} p^k (1-p)^{N-k}. \]
+
+<h4>Hoeffding bound (derivation)</h4>
+<p>Let \(X_i = \mathbb{1}[a_i \text{ correct}] \in \{0,1\}\), independent, mean \(p \gt \tfrac12\). The vote is wrong only if \(\bar X \le \tfrac12\), i.e. \(\bar X - p \le -(p - \tfrac12)\). Hoeffding's inequality for bounded independent variables gives \(P(\bar X - p \le -t) \le e^{-2Nt^2}\). With \(t = p - \tfrac12\):</p>
+\[ P(\text{vote wrong}) \le \exp\!\big(-2N(p - \tfrac12)^2\big). \]
+<p><i>Sketch of Hoeffding.</i> For any \(\lambda\gt0\), Markov's inequality on \(e^{-\lambda N(\bar X - p)}\) gives \(P(\bar X - p \le -t) \le e^{-\lambda N t}\prod_i \mathbb{E}\,e^{-\lambda(X_i - p)}\). Hoeffding's lemma bounds each factor by \(e^{\lambda^2/8}\) for a variable in \([0,1]\). Minimising \(e^{-\lambda N t + N\lambda^2/8}\) over \(\lambda\) gives \(\lambda = 4t\) and the bound \(e^{-2Nt^2}\). This is a quantitative Condorcet jury theorem: if each voter beats chance, majority error decays exponentially. If \(p \lt \tfrac12\), the same argument shows the majority is wrong with probability tending to 1: <b>voting amplifies a model that is usually wrong</b>.</p>
+
+<h4>Why voting works better in practice: errors scatter</h4>
+<p>On maths problems, wrong paths rarely agree: one gives 10, another 15, another 4.5. With \(m\) equally likely wrong answers, the correct answer only needs to beat each wrong answer individually, roughly \(p \gt (1-p)/m\). The lab's simulation with \(p = 0.45\) and 4 wrong answers: accuracy rises from 0.45 (\(N=1\)) to 0.81 (\(N=11\)) and 0.99 (\(N=41\)), while the "errors agree" case falls to 0.26.</p>
+
+<h4>Correlated samples (derivation of the slide formula)</h4>
+<p>Model correlation as a mixture: with probability \(\rho\), all \(N\) samples are copies of one draw (a shared failure mode); with probability \(1-\rho\) they are independent. By the law of total probability:</p>
+\[ \text{Acc}_\rho(N) = \rho \cdot p + (1-\rho)\cdot \text{Acc}_0(N), \qquad \lim_{N\to\infty}\text{Acc}_\rho(N) = \rho p + (1-\rho). \]
+<p>The ceiling is below 1 whenever \(\rho \gt 0\) and \(p\lt1\). To decorrelate: vary the exemplars and their order, paraphrase the instruction, mix models. This is Kahneman's meeting advice in algebra: collect independent judgments before letting them influence each other.</p>
+<pre><code>from collections import Counter
+
+def self_consistency(llm, prompt, n=10, temperature=0.7):
+    answers = []
+    for _ in range(n):
+        out = llm(prompt, temperature=temperature)
+        a = extract_answer(out)            # parse "Answer: ..."
+        if a is not None:
+            answers.append(a)
+    if not answers:
+        return None, 0.0
+    a, c = Counter(answers).most_common(1)[0]
+    return a, c / len(answers)             # vote share is a confidence signal</code></pre>
+<p><b>Cost:</b> \(N\times\) the tokens of CoT. Gains usually flatten after 10–20 samples. The vote share is a useful confidence score: low agreement flags questions to route to a stronger method or a human.</p>
+
+<!-- ================================================================== -->
+<h2 id="decomp">9. Decomposition</h2>
+<p>Break a problem into sub-questions \(s_1..s_m\) and solve them in order, each conditioned on earlier answers:</p>
+\[ p(a\mid q) \approx \prod_{j=1}^{m} p_\theta(s_j \mid q, s_{\lt j}) \cdot p_\theta(a \mid q, s_{1:m}). \]
+<p>If step \(j\) succeeds with probability \(p_j\) and failures are independent, the chain succeeds with \(\prod_j p_j\). Ten steps at 95% give \(0.95^{10} \approx 0.60\). Decomposition pays off only when the sub-steps are much easier than the whole problem. On the SCAN length split, least-to-most prompting reached 99.7% versus 16.2% for CoT with code-davinci-002 (Zhou et al., 2023), because each sub-command is easy and test commands are longer than any example.</p>
+<pre class="prompt">Least-to-most
+{question}
+Step 1: List the sub-questions needed to answer this, from easiest to hardest.
+Step 2: Answer each sub-question in order. Use earlier answers in later ones.
+End with "Answer: &lt;value&gt;".
+
+Plan-and-solve (Wang et al., 2023)
+Let's first understand the problem and devise a plan to solve it.
+Then let's carry out the plan and solve the problem step by step.
+
+Step-back (Zheng et al., 2024)
+What general principle or concept is this question about? State it.
+Now use that principle to answer: {question}</pre>
+
+<!-- ================================================================== -->
+<h2 id="tot">10. Tree of Thoughts and search</h2>
+<p>A chain commits to its first move. Tree of Thoughts (Yao et al., 2023) treats reasoning as search: at each step the model <b>proposes</b> several next thoughts, an <b>evaluator</b> (often the model itself, prompted to rate "sure / likely / impossible") scores them, and a search algorithm (BFS with beam \(b\), or DFS with backtracking) expands the best.</p>
+<h4>Success: one chain vs search</h4>
+<p>Let \(\rho_1\) be the probability that a single sampled chain solves the problem. With \(N\) independent chains and a perfect checker,</p>
+\[ P(\text{success}) = 1 - (1-\rho_1)^N, \]
+<p>and exhaustive search with a perfect checker succeeds whenever any path works. For the Game of 24 with \(\{4,9,10,13\}\), the lab computes \(\rho_1 \approx 0.23\%\) for uniformly random moves: a random chain almost never succeeds, while DFS finds 10 − 4 = 6, 13 − 9 = 4, 6 × 4 = 24 in about a thousand node visits. Yao et al. report GPT-4 solving 4% of Game-of-24 problems with CoT and 74% with ToT (breadth 5).</p>
+<h4>The random-chain probability (exact recursion)</h4>
+\[ \rho(s) = \begin{cases} \mathbb{1}[s = \{24\}] &amp; |s| = 1 \\ \frac{1}{|\mathcal{C}(s)|}\sum_{s' \in \mathcal{C}(s)} \rho(s') &amp; \text{otherwise} \end{cases} \]
+<p>where \(\mathcal{C}(s)\) are the states reachable by one operation. The lab uses exact <code>Fraction</code> arithmetic, which matters for 3 3 8 8 (= 8 ÷ (3 − 8/3)).</p>
+<h4>Cost</h4>
+<p>BFS with depth \(d\), beam \(b\) and \(k\) proposals per state uses about \(d \cdot b \cdot k\) proposal calls plus as many evaluation calls: tens to hundreds of calls per problem. Use ToT only for search-shaped problems (puzzles, planning, constrained generation).</p>
+<pre class="prompt">Propose step
+Input: 4 9 10 13
+Possible next steps (one operation each, show the numbers left):
+10 - 4 = 6 (left: 6 9 13)
+...
+Value step
+Evaluate if the numbers can reach 24 (sure / likely / impossible):
+6 9 13 →</pre>
+
+<!-- ================================================================== -->
+<h2 id="pal">11. Program-aided prompting (PAL)</h2>
+<p>The model writes a program \(c\); an interpreter executes it: \(a = \operatorname{exec}(c),\; c\sim p_\theta(c\mid q)\). Translation is the model's strength; exact arithmetic is not. Gao et al. (2023) report GSM8K accuracy with Codex of 72.0% for PAL versus 65.6% for CoT, and a much larger gap on GSM-Hard, a version with large numbers.</p>
+<pre class="prompt">{question}
+Write a short Python program that computes the answer and stores it in a
+variable named answer. Reply with only the code in a ```python block.</pre>
+<pre><code># typical model output for the bat-and-ball item
+total, diff = 1.10, 1.00
+ball = (total - diff) / 2      # ball + (ball + diff) = total
+answer = round(ball, 2)        # 0.05</code></pre>
+<p><b>Safety.</b> Model-written code is untrusted. Run it in a sandbox (container, no network, time limit). The lab's <code>run_pal</code> uses a tiny restricted namespace for classroom use only.</p>
+
+<!-- ================================================================== -->
+<h2 id="verify">12. Self-critique and verifiers</h2>
+<div class="box k"><b>WYSIATI: "What you see is all there is."</b> Kahneman's name for System 1's habit of building the most coherent story from the information at hand and ignoring what is missing.</div>
+<p>A model asked to "check your answer" sees exactly the same context as before. Huang et al. (2024) found that intrinsic self-correction, without external feedback, often failed to improve reasoning and sometimes made it worse. Critique helps when the loop adds <b>new evidence</b>: test results, interpreter output, retrieved documents (Reflexion, Shinn et al., 2023).</p>
+
+<h4>Perfect verifier (derivation)</h4>
+<p>Draw \(N\) independent candidates, each correct with probability \(p\); a perfect verifier accepts exactly the correct ones. We fail only if all \(N\) are wrong:</p>
+\[ P(\text{success}) = 1 - (1-p)^N. \]
+<p>With \(p = 0.3\), \(N = 10\): \(1 - 0.7^{10} \approx 0.97\). Plurality voting with three wrong answers gets about 0.38 in the lab's simulation. <b>Checking beats voting whenever a check exists.</b></p>
+<h4>Imperfect verifier (derivation, and a link to base rates)</h4>
+<p>Let the verifier accept a correct candidate with probability \(\alpha\) (true-positive rate) and a wrong one with probability \(\beta\) (false-positive rate). Process candidates in order and return the first accepted. Each candidate is accepted with probability \(\pi = p\alpha + (1-p)\beta\), so</p>
+\[ P(\text{some candidate accepted}) = 1 - (1-\pi)^N, \]
+\[ P(\text{correct}\mid\text{accepted}) = \frac{p\alpha}{p\alpha + (1-p)\beta}. \]
+<p>The second expression is Bayes' rule with base rate \(p\): exactly the taxi-cab calculation (§14). If the model is rarely right (\(p\) small), even a decent verifier accepts mostly wrong answers. Overall success is the product of the two terms.</p>
+<pre><code>def generate_verify(llm, prompt, check, n=10, temperature=0.8):
+    for _ in range(n):
+        cand = llm(prompt, temperature=temperature)
+        ok, feedback = check(cand)          # e.g. run unit tests, substitute back
+        if ok:
+            return cand
+        prompt += f"\n\nPrevious attempt failed: {feedback}\nTry again."
+    return None</code></pre>
+
+<!-- ================================================================== -->
+<h2 id="reasoning">13. Reasoning models</h2>
+<p>Models such as OpenAI o1 (2024) and DeepSeek-R1 (2025) are trained with reinforcement learning to generate long reasoning before answering, rewarded on verifiable outcomes. A generic objective:</p>
+\[ \max_\theta\; \mathbb{E}_{q\sim\mathcal{D},\,(r,a)\sim\pi_\theta(\cdot\mid q)}\big[R(q,a)\big] - \beta\, \mathrm{KL}\big(\pi_\theta(\cdot\mid q)\,\|\,\pi_{\text{ref}}(\cdot\mid q)\big). \]
+<p>The KL term keeps the policy close to a reference model so it does not drift into degenerate text. DeepSeek-R1 uses GRPO (group relative policy optimisation): sample a group of \(G\) outputs per question, and use the group-normalised reward as each output's advantage, \(A_i = (R_i - \operatorname{mean}(R))/\operatorname{std}(R)\), avoiding a separate value network.</p>
+<h4>How prompting changes</h4>
+<ul>
+<li>"Think step by step" is largely redundant; the model already allocates reasoning.</li>
+<li>The DeepSeek-R1 report observed that few-shot prompting consistently degraded its performance and recommends zero-shot prompts that describe the problem and specify the output format.</li>
+<li>Put effort into the specification: goal, constraints, success criteria, output format.</li>
+<li>Use the provider's effort or thinking-budget setting to trade cost for accuracy; reasoning tokens are billed.</li>
+</ul>
+
+<!-- ================================================================== -->
+<h2 id="bias">14. Bias as bugs: base rates, conjunction, availability</h2>
+<h3>Base-rate neglect: the taxi cab</h3>
+<p>85% of cabs are Green, 15% Blue. A witness who is right 80% of the time says "Blue". By Bayes' rule:</p>
+\[ P(B \mid \text{“B”}) = \frac{P(\text{“B”}\mid B)P(B)}{P(\text{“B”}\mid B)P(B) + P(\text{“B”}\mid G)P(G)} = \frac{0.8 \cdot 0.15}{0.8\cdot 0.15 + 0.2\cdot 0.85} = \frac{0.12}{0.29} \approx 0.41. \]
+<p>Most people answer near 80%, ignoring the base rate. Natural frequencies make it easy (Gigerenzer &amp; Hoffrage, 1995): of 1,000 cabs, 150 are Blue; the witness says Blue for 120 of them and for 170 of the 850 Green cabs; 120 of 290 is 41%.</p>
+<pre class="prompt">Base-rate-first prompt
+Before answering, write:
+1. The base rate (prior) for each possibility, with its source in the text.
+2. How likely the evidence is under each possibility.
+3. Natural frequencies for 1,000 cases.
+Then compute the answer from those counts. End with "Answer: &lt;value&gt;".</pre>
+
+<h3>Conjunction fallacy: Linda</h3>
+<p>For any events \(A, B\): \(P(A\cap B) = P(A)P(B\mid A) \le P(A)\), since \(P(B\mid A)\le 1\). "Bank teller and feminist" cannot be more probable than "bank teller". In Tversky &amp; Kahneman's (1983) studies, a large majority ranked the conjunction higher, because the description is <em>representative</em> of a feminist. Binz &amp; Schulz (2023) found GPT-3 made human-like errors on several such vignettes, noting that the famous versions may be memorised. Hagendorff et al. (2023) found intuitive errors on CRT-style items were common in earlier GPT-3 models and largely disappeared in later chat models.</p>
+<p><b>Testing lesson:</b> classic puzzles are in training data. To test reasoning rather than recall, change names, numbers and surface details (the lab's <code>make_items</code> does this for bat-and-ball isomorphs).</p>
+<pre class="prompt">Name the events involved, write the probability rule that relates them,
+then decide. Do not rely on how typical the description sounds.</pre>
+
+<h3>Availability and retrieval</h3>
+<p>People judge frequency by how easily examples come to mind. A model's recall similarly tracks how often a fact appeared in pretraining: Kandpal et al. (2023) found question-answering accuracy falls sharply for facts with few supporting documents. Retrieval-augmented generation replaces recall with reading (Lewis et al., 2020):</p>
+\[ p(y\mid q) \approx \sum_{d\in\text{top-}k(q)} p_\eta(d\mid q)\,p_\theta(y\mid q,d). \]
+<pre class="prompt">Answer using ONLY the documents below. Cite the document id for every claim.
+If the documents do not contain the answer, reply "not found".
+
+[doc 3] ...
+[doc 7] ...
+
+Question: {question}</pre>
+<p>ReAct (Yao et al., 2023) makes this a loop: Thought → Action (search, calculator, code) → Observation → Thought. Each observation is new evidence, the antidote to WYSIATI.</p>
+
+<!-- ================================================================== -->
+<h2 id="auto">15. Automatic prompt optimisation</h2>
+<p>Treat §1's \(\arg\max\) as black-box optimisation. OPRO (Yang et al., 2024) shows an optimiser model the history of (prompt, score) pairs and asks for a better prompt:</p>
+\[ x_{t+1} \sim p_{\text{opt}}\big(x \mid \{(x_i, s_i)\}_{i\le t}\big), \qquad s_i = \frac{1}{|D_{\text{dev}}|}\sum_{(q,a)\in D_{\text{dev}}} m\big(f(x_i\oplus q), a\big). \]
+<pre><code>def opro(score, optimizer_llm, seed_prompts, steps=20, keep=8):
+    hist = [(p, score(p)) for p in seed_prompts]
+    for _ in range(steps):
+        hist = sorted(hist, key=lambda t: t[1])[-keep:]          # best last
+        meta = "\n".join(f"text: {p}\nscore: {s:.1f}" for p, s in hist)
+        new = optimizer_llm(meta + "\nWrite a new instruction with a higher score.")
+        hist.append((new, score(new)))
+    return max(hist, key=lambda t: t[1])</code></pre>
+<p>OPRO found "Take a deep breath and work on this problem step-by-step", reaching 80.2% on GSM8K with PaLM 2-L. Related tools: APE (Zhou et al., 2023) and DSPy (Khattab et al., 2024). <b>Caution:</b> this is model selection on a dev set, so it can overfit; keep a held-out test set, and do not expect a found phrase to transfer to other models.</p>
+
+<!-- ================================================================== -->
+<h2 id="cheat">16. Cheat sheet</h2>
+<table>
+<tr><th>Situation</th><th>Technique</th><th>Cost</th><th>Mathematical idea</th></tr>
+<tr><td>Simple, well-defined task</td><td>Zero-shot, full specification</td><td>1×</td><td>Lower conditional entropy</td></tr>
+<tr><td>Unclear format or label space</td><td>Few-shot, balanced, shuffled</td><td>1×, longer prompt</td><td>Bayesian task inference</td></tr>
+<tr><td>Reading label probabilities</td><td>Contextual calibration</td><td>+1 call</td><td>Divide out the prompt's prior</td></tr>
+<tr><td>Multi-step reasoning</td><td>Zero- or few-shot CoT</td><td>5–10× output</td><td>Latent rationale; serial compute</td></tr>
+<tr><td>Answers vary across runs</td><td>Self-consistency, decorrelated</td><td>N×</td><td>Monte Carlo marginal; \(\rho\) caps gain</td></tr>
+<tr><td>Long compositional problems</td><td>Least-to-most, plan-and-solve</td><td>1–3×</td><td>Product of easy steps</td></tr>
+<tr><td>Search or planning puzzles</td><td>Tree of Thoughts</td><td>10–100×</td><td>Search with evaluator</td></tr>
+<tr><td>Arithmetic, exact logic</td><td>PAL</td><td>1× + interpreter</td><td>Exact execution</td></tr>
+<tr><td>Checkable answers</td><td>Generate–verify–revise</td><td>N× + checker</td><td>\(1-(1-p)^N\)</td></tr>
+<tr><td>Rare or recent facts</td><td>RAG, ReAct</td><td>+ retrieval</td><td>Marginalise over documents</td></tr>
+<tr><td>Reasoning model</td><td>Zero-shot, clear spec, effort setting</td><td>budgeted</td><td>RL-trained test-time compute</td></tr>
+</table>
+
+<!-- ================================================================== -->
+<h2 id="exercises">17. Exercises with solutions</h2>
+<div class="ex"><p><b>E1.</b> Show that \(\operatorname{Var}\big(\frac1K\sum_k\varepsilon_k\big) = \sigma^2(\rho + \frac{1-\rho}{K})\) for equicorrelated errors, and find the smallest \(K\) that gets within 10% of the limit when \(\rho = 0.2\).</p>
+<details><summary>Solution</summary><p>Derivation in §6. Need \(\frac{1-\rho}{K} \le 0.1\rho\), i.e. \(K \ge \frac{1-\rho}{0.1\rho} = \frac{0.8}{0.02} = 40\).</p></details></div>
+<div class="ex"><p><b>E2.</b> A model's paths are correct with \(p = 0.6\). Using Hoeffding, how many independent samples guarantee majority-vote error below 1%?</p>
+<details><summary>Solution</summary><p>\(e^{-2N(0.1)^2} \le 0.01 \Rightarrow N \ge \frac{\ln 100}{0.02} \approx 231\). The bound is loose: the exact binomial gives about 1% near \(N \approx 130\), and scattered errors need far fewer.</p></details></div>
+<div class="ex"><p><b>E3.</b> In the number game, how many examples consistent with both "multiples of 10" (10 members) and "even" (50 members) are needed for the odds to favour "multiples of 10" by 1,000:1, with equal priors?</p>
+<details><summary>Solution</summary><p>\(5^k \ge 1000 \Rightarrow k \ge \log 1000/\log 5 \approx 4.3\), so 5 examples.</p></details></div>
+<div class="ex"><p><b>E4.</b> A verifier has \(\alpha = 0.9\), \(\beta = 0.2\). Candidates are correct with \(p = 0.1\). What fraction of accepted answers are correct? What does this say about using LLM judges on hard tasks?</p>
+<details><summary>Solution</summary><p>\(\frac{0.09}{0.09 + 0.18} = \frac13\). When the base rate of correct answers is low, even a decent judge accepts mostly wrong answers: the taxi-cab problem again. Improve \(p\) (better generation) or \(\beta\) (stricter, external checks).</p></details></div>
+<div class="ex"><p><b>E5.</b> Calibration: \(\hat p_{\text{cf}} = (0.5, 0.3, 0.2)\) and \(\hat p(y\mid x) = (0.45, 0.30, 0.25)\). Which label wins before and after calibration?</p>
+<details><summary>Solution</summary><p>Before: label 1. After: \((0.9, 1.0, 1.25)\) normalised \(= (0.29, 0.32, 0.40)\): label 3.</p></details></div>
+<div class="ex"><p><b>E6.</b> Prove that the entropy of a temperature softmax is non-decreasing in \(T\).</p>
+<details><summary>Solution</summary><p>§2: \(dH/d\beta = -\beta\operatorname{Var}_p(z) \le 0\) and \(\beta = 1/T\) is decreasing in \(T\).</p></details></div>
+<div class="ex"><p><b>E7 (lab).</b> Write five new CRT-style questions with fresh numbers and objects. Compare direct, zero-shot CoT, PAL and self-consistency@5 on any model you can access. Report accuracy <em>and</em> tokens per item.</p>
+<details><summary>Hint</summary><p><code>python prompting_lab.py crt --backend ollama --model &lt;name&gt; --items 30</code>. Expect direct answering to fall for the System-1 answer more often on small models; PAL should be near-perfect if the model writes valid code.</p></details></div>
+
+<!-- ================================================================== -->
+<h2 id="lab">18. Running the lab</h2>
+<pre><code>pip install numpy                       # the only dependency
+python lab/prompting_lab.py all         # all offline demos, ~2 seconds
+python lab/prompting_lab.py vote        # one section: decode, numbergame, calibrate,
+                                        # variance, vote, verify, g24, taxi, crt
+
+# Real model, local (install Ollama and pull a model first):
+python lab/prompting_lab.py crt --backend ollama --model llama3.1:8b --items 30
+
+# Any OpenAI-compatible endpoint:
+export OPENAI_BASE_URL=https://.../v1  OPENAI_API_KEY=...
+python lab/prompting_lab.py crt --backend openai --model &lt;model-name&gt;</code></pre>
+<p>The <code>mock</code> backend is a toy model that answers like System 1 unless prompted to reason; it exists so the evaluation pipeline runs without a network. Its numbers illustrate the pipeline, not any real model.</p>
+
+<!-- ================================================================== -->
+<h2 id="refs">19. References</h2>
+<p><b>Psychology.</b> Kahneman, D. (2011). <i>Thinking, Fast and Slow</i>. Tversky &amp; Kahneman (1974), Judgment under uncertainty, <i>Science</i>. Tversky &amp; Kahneman (1981), The framing of decisions, <i>Science</i>. Tversky &amp; Kahneman (1983), The conjunction fallacy, <i>Psychological Review</i>. Frederick (2005), Cognitive reflection and decision making, <i>J. Economic Perspectives</i>. Gigerenzer &amp; Hoffrage (1995), <i>Psychological Review</i>. Tenenbaum (1999), Bayesian modeling of human concept learning, <i>NeurIPS</i>.</p>
+<p><b>Prompting.</b> Brown et al. (2020), <i>NeurIPS</i>. Zhao et al. (2021), Calibrate before use, <i>ICML</i>. Xie et al. (2022), ICL as implicit Bayesian inference, <i>ICLR</i>. Min et al. (2022), <i>EMNLP</i>. Wei et al. (2022), Chain-of-thought, <i>NeurIPS</i>. Kojima et al. (2022), <i>NeurIPS</i>. Wang et al. (2023), Self-consistency, <i>ICLR</i>. Zhou et al. (2023), Least-to-most, <i>ICLR</i>. Wang, L. et al. (2023), Plan-and-solve, <i>ACL</i>. Zheng, H. S. et al. (2024), Step-back, <i>ICLR</i>. Yao et al. (2023), Tree of Thoughts, <i>NeurIPS</i>. Gao et al. (2023), PAL, <i>ICML</i>. Yao et al. (2023), ReAct, <i>ICLR</i>. Shinn et al. (2023), Reflexion, <i>NeurIPS</i>. Huang et al. (2024), LLMs cannot self-correct reasoning yet, <i>ICLR</i>. Lewis et al. (2020), RAG, <i>NeurIPS</i>. Zhou, Y. et al. (2023), APE, <i>ICLR</i>. Yang et al. (2024), OPRO, <i>ICLR</i>. Khattab et al. (2024), DSPy, <i>ICLR</i>. Sclar et al. (2024), Prompt formatting sensitivity, <i>ICLR</i>. Zheng, M. et al. (2024), Social roles in system prompts, <i>Findings of EMNLP</i>.</p>
+<p><b>Theory.</b> Merrill &amp; Sabharwal (2024), The expressive power of transformers with chain of thought, <i>ICLR</i>. Feng et al. (2023), Towards revealing the mystery behind chain of thought, <i>NeurIPS</i>. Hoeffding (1963), <i>JASA</i>.</p>
+<p><b>Models as subjects.</b> Jones &amp; Steinhardt (2022), <i>NeurIPS</i>. Binz &amp; Schulz (2023), <i>PNAS</i>. Hagendorff, Fabi &amp; Kosinski (2023), <i>Nature Computational Science</i>. Kandpal et al. (2023), <i>ICML</i>. DeepSeek-AI (2025), DeepSeek-R1, arXiv:2501.12948.</p>
+
+</main>
+<script defer src="assets/vendor/katex/katex.min.js"></script>
+<script defer src="assets/vendor/katex/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'\\[',right:'\\]',display:true},{left:'\\(',right:'\\)',display:false}],throwOnError:false});document.documentElement.dataset.mathReady='1'"></script>
+</body>
+</html>
