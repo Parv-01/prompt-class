@@ -1,38 +1,35 @@
-# Prompting Techniques, Fast and Slow — class kit
+# Talking to Machines: Prompting, Fast and Slow
 
-A 60-minute interactive class on prompting techniques and their mathematics, framed through
-Daniel Kahneman's System 1 / System 2. **Everything works offline**: fonts, KaTeX and all
-widgets are bundled; no internet, server, API key or model is needed in the classroom.
+A 60-minute interactive class on **prompt engineering techniques**, built around real-world
+problems, questions for the class, and ideas from Daniel Kahneman's *Thinking, Fast and Slow*.
+
+**Live:** https://parv-01.github.io/prompt-class/ · **Handout:** https://parv-01.github.io/prompt-class/notes.html
 
 | File | What it is |
 |---|---|
-| `index.html` | 31-slide interactive deck. Double-click to open (Chrome/Edge/Firefox). |
-| `notes.html` / `notes.pdf` | Handout: run sheet, every derivation, code, prompt templates, exercises with solutions (22 pages). |
-| `lab/prompting_lab.py` | Runnable lab (numpy only) reproducing every slide's maths, plus a real-model comparison harness. |
-| `assets/` | Deck engine, widgets, local fonts (OFL) and KaTeX (MIT). |
+| `index.html` | 32-slide interactive deck. Works offline: just open the file. |
+| `notes.html` / `notes.pdf` | The handbook: 12 techniques, each with the problem it solves, steps, a template, before/after examples, common mistakes, an exercise and a discussion question. Also a run sheet, checklist, template library and quiz answers. |
+| `lab/prompting_lab.py` | Optional, for curious students: small Python simulations behind the demos (needs numpy). |
+| `assets/` | Deck engine, widgets and local fonts (OFL). |
+
+## The twelve techniques
+**Fast** (help the model pick the right answer): specify · show examples · shape the output ·
+remove anchors · reframe · use roles well.
+**Slow** (give it room to think and ways to check): think step by step · ask several times ·
+break it down · explore options · use tools · check with evidence.
+Plus a bonus (give it the facts), "thinking" models, and three thinking traps: base rates,
+detailed stories, and prompt injection.
+
+## Interactive moments
+Bat-and-ball warm-up · creativity dial · prompt builder ("what would the model have to guess?") ·
+prompt makeover cards · guess-the-rule game · **live anchoring experiment** · 17 × 24 ·
+technique playground · ask-several-times simulator · Game of 24 · taxi-cab dots · Linda poll ·
+quiz. Outputs that stand in for an AI are labelled illustrative.
 
 ## Presenting
-Open `index.html`, press **F** for full screen. Keys: → / ← move, **N** speaker notes with
-minute-by-minute timings, **G** jump to slide, **T** light/dark theme, **?** help. `#18` in the URL opens slide 18.
+Press **F** for full screen, **N** for speaker notes with minute-by-minute timings, **G** to jump,
+**T** for light/dark. `#12` in the URL opens slide 12.
 
-Interactive slides: 3 (bat and ball), 6 (temperature/top-p), 9 (number game), 10 (live anchoring
-experiment with permutation test), 15 (17 × 24), 16 (technique playground), 18 (self-consistency
-with correlation), 20 (Game of 24 search), 24 (taxi cab Bayes), 25 (Linda poll), 29 (quiz).
-Widget outputs that stand in for a model are labelled illustrative.
-
-If running late, skip slides 13, 21 and 27 (one minute each).
-
-## Lab
-```bash
-pip install numpy
-python lab/prompting_lab.py all                      # all offline demos, ~2 s
-python lab/prompting_lab.py crt --backend ollama --model llama3.1:8b --items 30
-OPENAI_BASE_URL=... OPENAI_API_KEY=... python lab/prompting_lab.py crt --backend openai --model <name>
-```
-
-## Live site
-- Slides: https://parv-01.github.io/prompt-class/
-- Handout: https://parv-01.github.io/prompt-class/notes.html (PDF: `notes.pdf`)
-
-Pushing to `main` redeploys automatically via `.github/workflows/pages.yml`
-(Settings → Pages → Source must be **GitHub Actions**).
+## Deployment
+Served by GitHub Pages from the `main` branch root (Settings → Pages → Deploy from a branch).
+Every push to `main` updates the site within a minute or two.

@@ -81,7 +81,7 @@
       const { keep, fin } = dist();
       box.innerHTML = NEXT.map(([w], i) => barRow("$" + w, fin[i], (keep.has(i) ? "" : "cut") + (i === last ? " picked" : ""))).join("");
       const H = -fin.reduce((a, v) => a + (v > 0 ? v * Math.log2(v) : 0), 0);
-      $("t-H").textContent = `Entropy of the final distribution: ${H.toFixed(2)} bits`;
+      if ($("t-H")) $("t-H").textContent = H < 0.3 ? "Very predictable: the same answer almost every time." : H < 1.2 ? "Some variety: mostly the top answer, sometimes others." : "Lots of variety: answers change from run to run.";
     }
     $("t-sample").addEventListener("click", () => {
       const { fin } = dist(); let r = Math.random(), i = 0;
@@ -157,9 +157,11 @@
         const s = [...all]; for (let i = s.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0; [s[i], s[j]] = [s[j], s[i]]; }
         const d = mean(s.slice(A.length)) - mean(s.slice(0, A.length)); if (Math.abs(d) >= Math.abs(obs)) ge++;
       }
-      out.innerHTML = `Low anchor (10): median <b>${med(A)}</b>, mean ${mean(A).toFixed(1)}, n=${A.length}<br>` +
-        `High anchor (65): median <b>${med(B)}</b>, mean ${mean(B).toFixed(1)}, n=${B.length}<br>` +
-        `Difference in means: <b>${obs.toFixed(1)}</b> points. Permutation test (${R.toLocaleString()} shuffles): p ${(ge + 1) / (R + 1) < 0.001 ? "&lt; <b>0.001</b>" : "≈ <b>" + ((ge + 1) / (R + 1)).toFixed(3) + "</b>"}`;
+      const pv = (ge + 1) / (R + 1);
+      out.innerHTML = `Group A (saw 10): typical guess <b>${med(A)}%</b> · Group B (saw 65): typical guess <b>${med(B)}%</b><br>` +
+        `Group B guessed <b>${Math.abs(obs).toFixed(0)} points ${obs >= 0 ? "higher" : "lower"}</b> on average.<br>` +
+        `Could that be luck? Shuffling the names into random groups ${R.toLocaleString()} times, a gap this big appeared ` +
+        `<b>${pv < 0.001 ? "less than 0.1%" : (pv * 100).toFixed(1) + "%"}</b> of the time.`;
     });
     $("an-demo").addEventListener("click", () => { a.value = "20, 25, 15, 30, 22, 18, 28, 35, 12, 25"; b.value = "45, 50, 40, 38, 55, 42, 35, 48, 60, 44"; $("an-run").click(); });
   }
@@ -168,26 +170,26 @@
   const Q = "A notebook and a pen cost ₹110 in total. The notebook costs ₹100 more than the pen. How much does the pen cost?";
   const TECH = {
     direct: { p: `Q: ${Q}\nA:`, o: `₹10`, bad: true,
-      n: "1 call. The fluent, pattern-matched answer comes out first. Greedy decoding is System 1." },
+      n: "The quick, familiar-looking answer pops out first, exactly like a person answering in five seconds." },
     zcot: { p: `Q: ${Q}\nA: Let's think step by step.`, o: `Let the pen cost x. The notebook costs x + 100.\nx + (x + 100) = 110, so 2x = 10, x = 5.\nThe pen costs ₹5.`,
-      n: "1 call, ~5–10× output tokens. Trigger phrase buys serial computation (Kojima et al., 2022)." },
+      n: "Five extra words make the model write its working before answering. Costs a longer reply." },
     fcot: { p: `Q: A shirt and a cap cost ₹1,200. The shirt costs ₹800 more than the cap. How much is the cap?\nA: Let the cap be c. Then c + (c + 800) = 1200, so 2c = 400, c = 200. The answer is ₹200.\n\nQ: ${Q}\nA:`,
       o: `Let the pen be p. Then p + (p + 100) = 110, so 2p = 10, p = 5. The answer is ₹5.`,
-      n: "1 call. Worked exemplars show the format and the reasoning style (Wei et al., 2022)." },
+      n: "One worked example shows how to reason and how to format the answer." },
     l2m: { p: `${Q}\nFirst list the sub-questions you need to answer, then answer them in order.`,
       o: `Sub-question 1: What is the difference between the two prices? ₹100.\nSub-question 2: If we remove the difference, what is left? 110 − 100 = ₹10, shared equally by two "pen-sized" parts.\nSub-question 3: One part? 10 / 2 = ₹5.\nThe pen costs ₹5.`,
-      n: "1–2 calls. Easier sub-problems first; later answers condition on earlier ones (Zhou et al., 2023)." },
+      n: "Break the big question into small ones and answer them in order." },
     sc: { p: `Same zero-shot CoT prompt, sampled 5 times at temperature 0.7.`,
       o: `Sample 1 → ₹5\nSample 2 → ₹5\nSample 3 → ₹10\nSample 4 → ₹5\nSample 5 → ₹5\nMajority vote → ₹5 (4 of 5)`,
-      n: "N calls (here 5×). Marginalise over reasoning paths; the vote cancels uncorrelated errors (Wang et al., 2023)." },
+      n: "Ask the same question several times and take the most common answer. Costs 5× as much." },
     pal: { p: `${Q}\nWrite Python that computes the answer. Do not compute it in your head.`,
       o: `total, diff = 110, 100\npen = (total - diff) / 2     # pen + (pen + diff) = total\nprint(pen)                   # → 5.0`,
-      n: "1 call + an interpreter. The model writes the plan; Python does the arithmetic (Gao et al., 2023)." },
+      n: "The model writes the steps as code; a computer does the arithmetic. No mental-maths slips." },
     crit: { p: `Answer, then check your answer by substituting it back into the problem. If the check fails, fix it.`,
       o: `Draft: ₹10.\nCheck: pen 10, notebook 110 → total 120 ≠ 110. ✗\nRevise: 2x + 100 = 110 → x = 5. Check: 5 + 105 = 110. ✓\nFinal: ₹5.`,
-      n: "Works here because the check is external and verifiable (substitution). Without a real check, self-critique often fails (Huang et al., 2024)." },
+      n: "Works because the check is real: put the answer back into the problem. \"Are you sure?\" alone often doesn't help." },
     role: { p: `You are a world-class mathematician.\nQ: ${Q}\nA:`, o: `₹10`, bad: true,
-      n: "A persona does not add computation. Personas don't reliably improve accuracy (Zheng et al., 2024)." },
+      n: "Calling it a genius doesn't make it think harder. Still the five-second answer." },
   };
   function initPlayground() {
     const sg = $("tp-seg"); if (!sg) return;
@@ -230,7 +232,7 @@
       const p = +P.value, N = +Nn.value, rho = +RHO.value, m = +M.value;
       $("sc-pv").textContent = p.toFixed(2); $("sc-nv").textContent = N; $("sc-rv").textContent = rho.toFixed(2); $("sc-mv").textContent = m;
       const agree = binomMajority(N, p), scatter = plurality(N, p, m, 6000), corr = rho * p + (1 - rho) * scatter;
-      $("sc-bars").innerHTML = barRow("1 sample", p) + barRow("vote, errors agree", agree) + barRow(`vote, ${m} wrong answers`, scatter) + barRow(`+ correlation ρ`, corr, "picked");
+      $("sc-bars").innerHTML = barRow("ask once", p) + barRow("vote, same mistake", agree) + barRow("vote, mixed mistakes", scatter) + barRow("…if they copy", corr, "picked");
       // chart: accuracy vs N
       const Ns = []; for (let n = 1; n <= 41; n += 2) Ns.push(n);
       const W = 520, Hh = 170, L = 44, B = 26, Tp = 8;
@@ -332,7 +334,7 @@
       }));
     });
     document.querySelectorAll("[data-reveal]").forEach((btn) => btn.addEventListener("click", () => $(btn.dataset.reveal).classList.toggle("open")));
-    document.querySelectorAll(".quiz .q").forEach((q) => q.addEventListener("click", () => q.classList.toggle("open")));
+    document.querySelectorAll(".quiz .q, .mk .card").forEach((q) => q.addEventListener("click", () => q.classList.toggle("open")));
     const m = $("mul-in");
     if (m) {
       const t0 = { v: null };
@@ -346,8 +348,34 @@
     }
   }
 
+  /* ---------- 10. Prompt builder: what does the model have to guess? ---------- */
+  const PARTS = [
+    ["role", "Role", "You are a customer-support agent for ShopKart, an online store.", "Who is speaking? A friend, a lawyer, the company?"],
+    ["task", "Task", "Write a reply to the customer email below.", "What exactly should it produce: a reply, a summary, a refund form?"],
+    ["context", "Context", "Policy: orders more than 5 days late get a full refund. Damaged items can be returned free.", "What is the refund policy? It cannot know your company's rules."],
+    ["constraints", "Constraints", "Do not promise anything outside the policy. Apologise once, not repeatedly.", "Is it allowed to promise a refund? A discount coupon?"],
+    ["tone", "Tone & audience", "Warm and professional. The customer is upset; keep sentences short.", "Formal or friendly? Long or short?"],
+    ["format", "Format", "Under 120 words. End with the refund timeline and a support phone number.", "How long? What must the reply end with?"],
+  ];
+  function initBuilder() {
+    const box = $("pb-checks"); if (!box) return;
+    box.innerHTML = PARTS.map(([k, label]) => `<label class="check"><input type="checkbox" data-k="${k}"> ${label}</label>`).join("");
+    const email = 'Email: "My order #4521 came 6 days late and the box was crushed. I want my money back."';
+    function render() {
+      const on = new Set(Array.from(box.querySelectorAll("input:checked")).map((i) => i.dataset.k));
+      const lines = PARTS.filter(([k]) => on.has(k)).map(([, label, text]) => `${label}: ${text}`);
+      $("pb-prompt").textContent = (lines.length ? lines.join("\n") : "Reply to this complaint.") + "\n\n" + email;
+      const missing = PARTS.filter(([k]) => !on.has(k));
+      $("pb-guess").innerHTML = missing.length
+        ? `<b>The model still has to guess (${missing.length}):</b><ul>${missing.map(([, , , q]) => `<li>${q}</li>`).join("")}</ul>`
+        : "<b>Nothing left to guess.</b> Every reader, human or model, would now write roughly the same reply.";
+      $("pb-meter").style.width = (on.size / PARTS.length) * 100 + "%";
+    }
+    box.addEventListener("change", render); render();
+  }
+
   document.addEventListener("DOMContentLoaded", () => {
-    [initBatBall, initTemp, initNumberGame, initAnchor, initPlayground, initSC, initG24, initTaxi, initSmall].forEach((f) => {
+    [initBuilder, initBatBall, initTemp, initNumberGame, initAnchor, initPlayground, initSC, initG24, initTaxi, initSmall].forEach((f) => {
       try { f(); } catch (e) { console.error(f.name, e); }
     });
   });

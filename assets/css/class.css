@@ -70,3 +70,25 @@ svg.chart text { font-size: 14px; }
 .min { position: absolute; top: 34px; right: 112px; font-family: var(--f-display); font-size: 16px; color: var(--muted); }
 
 .cols > * { min-width: 0; }
+
+/* ---- methodology-deck additions ---- */
+.meter { height: 10px; background: var(--paper); border-radius: 5px; overflow: hidden; margin: 10px 0 14px; }
+.meter span { display: block; height: 100%; background: var(--attn); transition: width 220ms var(--ease); }
+#pb-guess ul { margin: 6px 0 0; }
+#pb-guess, #pb-guess li { font-size: 17px; line-height: 1.4; margin-bottom: 4px; }
+#pb-guess ul { columns: 1; }
+.ask { border: 2px dashed var(--attn); border-radius: var(--r-panel); padding: 12px 18px; font-family: var(--f-display); font-size: 22px; color: var(--ink); }
+.ask::before { content: "Ask the class  "; color: var(--attn); font-weight: 700; font-size: 15px; letter-spacing: .05em; text-transform: uppercase; display: block; margin-bottom: 2px; }
+.tnum { font-family: var(--f-display); font-weight: 700; font-size: 18px; color: var(--attn); letter-spacing: .03em; text-transform: uppercase; margin-bottom: 6px; }
+.mk { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--s4); }
+.mk .card { border-top: 2px solid var(--ink); padding-top: 12px; cursor: pointer; }
+.mk .card .bad { font-family: var(--f-mono); font-size: 19px; background: var(--paper-2); border-left: 4px solid var(--bad); padding: 10px 14px; border-radius: 0 6px 6px 0; }
+.mk .card .good { display: none; font-family: var(--f-mono); font-size: 16px; line-height: 1.5; background: var(--paper-2); border-left: 4px solid var(--ok); padding: 10px 14px; border-radius: 0 6px 6px 0; margin-top: 10px; white-space: pre-wrap; }
+.mk .card.open .good { display: block; }
+.mk .card h3 { font-size: 22px; }
+.pill { display: inline-block; font-family: var(--f-display); font-size: 15px; font-weight: 600; padding: 3px 10px; border-radius: 999px; background: var(--paper-2); color: var(--ink-2); margin: 0 6px 6px 0; }
+.toolbox { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px 24px; }
+.toolbox div { border-top: 3px solid var(--attn); padding-top: 8px; font-family: var(--f-display); }
+.toolbox div.s1 { border-top-color: var(--heat); }
+.toolbox b { display: block; font-size: 22px; }
+.toolbox span { font-size: 16px; color: var(--muted); }
